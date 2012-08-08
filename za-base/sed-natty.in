@@ -1,0 +1,15 @@
+/@white@/s//#ffffff/g
+/@unknownstatus@/s//#9f9833/g
+/@failed@/s//#924056/g
+/@failing@/s//#e8215d/g
+/@failingcurrent@/s//#f570a8/g
+/@failingdisabled@/s//#eab4bf/g
+/@headerbarhover@/s//rgb(183, 187, 234)/g
+/@current@/s//rgb(44, 72, 232)/g
+/@normal@/s//rgb(44, 72, 232)/g
+/@bodyback@/s//rgb(106, 115, 145)/g
+/@tableback@/s//rgb(69, 78, 146)/g
+/@tablehead@/s//rgb(45, 56, 147)/g
+/@help@/s//rgb(37, 50, 71)/g
+/@nearblack@/s//rgb(3, 2, 28)/g
+/@darkgreen@/s//rgb(98, 121, 52)/g

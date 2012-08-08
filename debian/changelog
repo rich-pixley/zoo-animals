@@ -1,0 +1,830 @@
+zoo-animals (3.20) unstable; urgency=low
+
+  * Folding in za-conf, za-php-utils, za-merge-timings. Break out
+    za-dc-home.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 12 Jun 2012 13:35:00 -0700
+
+zoo-animals (3.19) unstable; urgency=low
+
+  * Copied from za-post to zoo-animals to start an externally releasable
+    component.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 12 Jun 2012 12:55:00 -0700
+
+za-post (3.18) unstable; urgency=low
+
+  * Drop references to gccunstable.  Fix a bug around named components.
+    Move more things into conftool.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 6 Jun 2012 12:00:00 -0700
+
+za-post (3.17) unstable; urgency=low
+
+  * force dependency on za-conf-1.4.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 5 Jun 2012 15:55:00 -0700
+
+za-post (3.16) unstable; urgency=low
+
+  * conftool related fixes.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 5 Jun 2012 15:45:00 -0700
+
+za-post (3.15) unstable; urgency=low
+
+  * Use externally provided ZAconf.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 1 Jun 2012 15:20:00 -0700
+
+za-post (3.14) unstable; urgency=low
+
+  * Use externally provided ZAbom.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 1 Jun 2012 11:10:00 -0700
+
+za-post (3.13) unstable; urgency=low
+
+  * Drop build group.  Switch owner to za-post.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 1 Jun 2012 10:35:00 -0700
+
+za-post (3.12) unstable; urgency=low
+
+  * Drop opal, add goodlife, from default target list.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 14 May 2012 12:00:00 -0700
+
+za-post (3.11) unstable; urgency=low
+
+  * Default checkrange to ganymede.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 11 Apr 2012 16:50:00 -0700
+
+za-post (3.10) unstable; urgency=low
+
+  * Fix time stamp on log lines.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 10 Apr 2012 12:10:00 -0700
+
+za-post (3.9) unstable; urgency=low
+
+  * Fix time stamp on log lines.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 10 Apr 2012 12:05:00 -0700
+
+za-post (3.8) unstable; urgency=low
+
+  * Flush bom cache in another case where required.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 10 Apr 2012 11:50:00 -0700
+
+za-post (3.7) unstable; urgency=low
+
+  * Remove component dir completely on removal.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 10 Apr 2012 11:20:00 -0700
+
+za-post (3.6) unstable; urgency=low
+
+  * Corrected directory walk on removals.  Apparently, symlinks to
+    directories are returned as directories.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 9 Apr 2012 13:20:00 -0700
+
+za-post (3.5) unstable; urgency=low
+
+  * It's ok if we can't remove a subdir after a component goes away.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 9 Apr 2012 12:35:00 -0700
+
+za-post (3.4) unstable; urgency=low
+
+  * Another rename fix, this one in prerm.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 6 Apr 2012 16:00:00 -0700
+
+za-post (3.3) unstable; urgency=low
+
+  * Handle a default case in postrm.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 6 Apr 2012 16:00:00 -0700
+
+za-post (3.2) unstable; urgency=low
+
+  * More renaming fixes.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 5 Apr 2012 15:35:00 -0700
+
+za-post (3.1) unstable; urgency=low
+
+  * Renaming from za-dependency-checker-2.81 to za-post-3.1.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 2 Apr 2012 15:50:00 -0700
+
+za-dependency-checker (2.81) unstable; urgency=low
+
+  * Copyright and license changes only.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 2 Apr 2012 15:10:00 -0700
+
+za-dependency-checker (2.80) unstable; urgency=low
+
+  * Explicit trigger for dependency-checker too.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 19 Jan 2012 14:55:00 -0800
+
+za-dependency-checker (2.79) unstable; urgency=low
+
+  * State service dependency.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 19 Jan 2012 14:45:00 -0800
+
+za-dependency-checker (2.78) unstable; urgency=low
+
+  * Explicit trigger.  Comment on caught triggers.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 19 Jan 2012 14:35:00 -0800
+
+za-dependency-checker (2.77) unstable; urgency=low
+
+  * Unwarn start/stop levels init scripts.  Explicit service stops.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 19 Jan 2012 14:10:00 -0800
+
+za-dependency-checker (2.76) unstable; urgency=low
+
+  * First pass at using triggers for service restarts.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 19 Jan 2012 13:45:00 -0800
+
+za-dependency-checker (2.75) unstable; urgency=low
+
+  * Invent za-dc-home.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 19 Jan 2012 13:10:00 -0800
+
+za-dependency-checker (2.74) unstable; urgency=low
+
+  * za-dc-d.init: mkdir -p; move pid file to /var/run.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 19 Jan 2012 11:55:00 -0800
+
+za-dependency-checker (2.73) unstable; urgency=low
+
+  * za-dc-d depends on za-bom.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 17 Jan 2012 12:45:00 -0800
+
+za-dependency-checker (2.72) unstable; urgency=low
+
+  * Sigh.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 13 Jan 2012 12:45:00 -0800
+
+za-dependency-checker (2.71) unstable; urgency=low
+
+  * Fix typo.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 13 Jan 2012 12:15:00 -0800
+
+za-dependency-checker (2.70) unstable; urgency=low
+
+  * A little more logging around svn failures.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 13 Jan 2012 10:55:00 -0800
+
+za-dependency-checker (2.69) unstable; urgency=low
+
+  * Merging from development branch.  Implementing za-dc-d lock and work
+    assignment daemon.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 13 Jan 2012 11:45:00 -0800
+
+za-dependency-checker (2.68) unstable; urgency=low
+
+  * Oops.  Fix error redirection.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 2 Dec 2011 16:25:00 -0800
+
+za-dependency-checker (2.67) unstable; urgency=low
+
+  * Better error coverage around ZADCgen call.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 2 Dec 2011 16:05:00 -0800
+
+za-dependency-checker (2.66) unstable; urgency=low
+
+  * Make ContextLock a sleepy spin loop.
+  * Only start daemons if application is not disabled.
+  * Invent ZAbom.Tracing context manager for temporarily setting trace.
+  * Move ZADCgen.Component.oedir to ZADCgen.Globals.oedir so that svn
+    updates are only done once.
+  * ZADCgen.Component.next: return additions in sorted order.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 1 Dec 2011 10:50:00 -0800
+
+za-dependency-checker (2.65) unstable; urgency=low
+
+  * Invent ContextLock with which to protect svn command in ZADCgen.  Fix
+    a few small mistakes.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 30 Nov 2011 17:35:00 -0800
+
+za-dependency-checker (2.64) unstable; urgency=low
+
+  * add --make-pidfile to daemon start.
+  * increase sleep between each daemon start.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 15 Nov 2011 16:10:00 -0800
+
+za-dependency-checker (2.63) unstable; urgency=low
+
+  * Fix a few bugs dealing with channel selection.
+  * Stop publishing the seeder.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 15 Nov 2011 9:45:00 -0800
+
+za-dependency-checker (2.62) unstable; urgency=low
+
+  * Merging bomtool and za-dependency-seeder bom objects into ZAbom.py.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 7 Jun 2011 15:00:00 -0700
+
+za-dependency-checker (2.61) unstable; urgency=low
+
+  * Fix status.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 6 Jun 2011 12:30:00 -0700
+
+za-dependency-checker (2.60) unstable; urgency=low
+
+  * New locking strategy.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 3 Jun 2011 14:10:00 -0700
+
+za-dependency-checker (2.59) unstable; urgency=low
+
+  * Invent za-dc-gen.py.  We now use an outcall to determine next
+    component to check.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 1 Jun 2011 16:00:00 -0700
+
+za-dependency-checker (2.58) unstable; urgency=low
+
+  * Update emails to display svnloc location.
+
+ -- David Woods <david.woods@palm.com>  Fri, 20 May 2011 14:00:00 -0700
+
+za-dependency-checker (2.57) unstable; urgency=low
+
+  * Update emails, add descriptions of the "skipped" and
+    "notargetarch" states.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 12 April 2011 15:20:00 -0700
+
+za-dependency-checker (2.56) unstable; urgency=low
+
+  * Fix init script for finicky maverick.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 18 Jan 2011 18:05:00 -0800
+
+za-dependency-checker (2.55) unstable; urgency=low
+
+  * Email settings now default to za-dc.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 5 Nov 2010 05:30:00 -0700
+
+za-dependency-checker (2.54) unstable; urgency=low
+
+  * Also depend on za-checker.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 12 Oct 2010 10:40:00 -0700
+
+za-dependency-checker (2.53) unstable; urgency=low
+
+  * Force move initial status file - in case install protections prevent
+    it otherwise.  Fix built time.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Sun, 10 Oct 2010 12:20:00 -0700
+
+za-dependency-checker (2.52) unstable; urgency=low
+
+  * distinguish "bumped" components from "new".  "bumped" now both checked
+    and check box disabled.  "New" have status "unknown" and are painted
+    in yellow.  More info about breakdowns in status page.  Fix several
+    time calculations.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 8 Oct 2010 12:15:00 -0700
+
+za-dependency-checker (2.51) unstable; urgency=low
+
+  * seed components in the 'none' image but skip them and mark them skipped.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 7 Oct 2010 17:25:00 -0700
+
+za-dependency-checker (2.50) unstable; urgency=low
+
+  * dereference owners before sending email.  Several minor fixes.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 1 Oct 2010 17:00:00 -0700
+
+za-dependency-checker (2.49) unstable; urgency=low
+
+  * Make sure there's something in the reap email.  Otherwise it goes in
+    different directions.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 17 Jun 2010 13:30:00 -0700
+
+za-dependency-checker (2.48) unstable; urgency=low
+
+  * Add a prune term to the find command for oe-failure directories.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 2 Jun 2010 14:20:00 -0700
+
+za-dependency-checker (2.47) unstable; urgency=low
+
+  * Remove old oe-failure directories.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 1 Jun 2010 15:55:00 -0700
+
+za-dependency-checker (2.46) unstable; urgency=low
+
+  * Drop palmtools.  Add webos-buildtools.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 20 May 2010 18:05:00 -0700
+
+za-dependency-checker (2.45) unstable; urgency=low
+
+  * Drop conflicts & replaces for nova- packages.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 22 Mar 2010 13:40:00 -0700
+
+za-dependency-checker (2.44) unstable; urgency=low
+
+  * Fix the full log link in email.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 12 Mar 2010 11:40:00 -0800
+
+za-dependency-checker (2.43) unstable; urgency=low
+
+  * Parameterize whether target arch errors should be ignored.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 15 Oct 2009 12:15:00 -0700
+
+za-dependency-checker (2.42) unstable; urgency=low
+
+  * Include hwtools in acceptable images.  Build europa by default.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 5 Oct 2009 10:35:00 -0700
+
+za-dependency-checker (2.41) unstable; urgency=low
+
+  * Restore the just- prefix before normal build targets.  Forgot about
+    "install-first" which otherwise breaks our build target naming
+    tradition.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 2 Oct 2009 12:45:00 -0700
+
+za-dependency-checker (2.40) unstable; urgency=low
+
+  * Switch to an inclusion list of images rather than an exclusion list.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 2 Oct 2009 10:15:00 -0700
+
+za-dependency-checker (2.39) unstable; urgency=low
+
+  * Drop support for oldconfig.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 2 Oct 2009 2:05:00 -0700
+
+za-dependency-checker (2.38) unstable; urgency=low
+
+  * command line option for picking component.  Drop initial fetchall.  LSBize.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 2 Oct 2009 1:50:00 -0700
+
+za-dependency-checker (2.37) unstable; urgency=low
+
+  * Invent application disable so that services can stay installed but
+    down even over upgrades.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 15 Sept 2009 10:15:00 -0700
+
+za-dependency-checker (2.36) unstable; urgency=low
+
+  * Remove home directory on removal.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 28 Aug 2009 13:20:00 -0700
+
+za-dependency-checker (2.35) unstable; urgency=low
+
+  * Make and chown home directory if necessary.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 28 Aug 2009 10:50:00 -0700
+
+za-dependency-checker (2.34) unstable; urgency=low
+
+  * Use existing uids.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 24 Aug 2009 11:00:00 -0700
+
+za-dependency-checker (2.33) unstable; urgency=low
+
+  * Now rolls up component stats and keeps statlog.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 1 Jul 2009 16:00:00 -0700
+
+za-dependency-checker (2.32) unstable; urgency=low
+
+  * Remove BUILD-* directories too when cleaning.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 25 Jun 2009 12:00:00 -0700
+
+za-dependency-checker (2.31) unstable; urgency=low
+
+  * Introduce mcf via oldconfig.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 22 Jun 2009 13:00:00 -0700
+
+za-dependency-checker (2.30) unstable; urgency=low
+
+  * Invent, (and display), targetlist file.  Also configargs file.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 22 Jun 2009 12:00:00 -0700
+
+za-dependency-checker (2.29) unstable; urgency=low
+
+  * manage disable file on init script start/stop.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 22 Jun 2009 11:45:00 -0700
+
+za-dependency-checker (2.28) unstable; urgency=low
+
+  * Seeder needs to update existing directories too in order to handle the
+    case of component ownership changes.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 18 Jun 2009 14:15:00 -0700
+
+za-dependency-checker (2.27) unstable; urgency=low
+
+  * If svn co fails, try a few more times after removing the working
+    directory completely.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 18 Jun 2009 12:15:00 -0700
+
+za-dependency-checker (2.26) unstable; urgency=low
+
+  * Cope with dereferencing the bom.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 11 May 2009 15:15:00 -0700
+
+za-dependency-checker (2.25) unstable; urgency=low
+
+  * Flag "boss" email separately from owner email.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 7 May 2009 10:35:00 -0700
+
+za-dependency-checker (2.24) unstable; urgency=low
+
+  * Convert timings from seconds to human readable intervals.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 22 Apr 2009 10:55:00 -0700
+
+za-dependency-checker (2.23) unstable; urgency=low
+
+  * Parameterize svnloc - prerequisite for working on a non-default branch.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 21 Apr 2009 15:00:00 -0700
+
+za-dependency-checker (2.22) unstable; urgency=low
+
+  * Instrument for timings.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 20 Apr 2009 12:30:00 -0700
+
+za-dependency-checker (2.21) unstable; urgency=low
+
+  * Convert to iso-8601 dates.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 17 Apr 2009 14:00:00 -0700
+
+za-dependency-checker (2.20) unstable; urgency=low
+
+  * Extend to work on parameterized branch.  Don't "seed" on postinstall
+    because if we do, then there isn't enough time for za-lion to set our
+    branch first.  Can't put it in init.d either for the same reason.
+    Instead, just let init.d exit quietly if we aren't seeded.  Seeding
+    can either be done manually or at the usually scheduled time
+    overnight.  Change destination of admin mail.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 25 Feb 2009 11:40:00 -0800
+
+za-dependency-checker (2.19) unstable; urgency=low
+
+  * Stop attempting to build for zepfloyd.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 4 Feb 2009 15:00:00 -0800
+
+za-dependency-checker (2.18) unstable; urgency=low
+
+  * Fix an uninitialized variable problem in the status page.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 4 Feb 2009 13:00:00 -0800
+
+za-dependency-checker (2.17) unstable; urgency=low
+
+  * Fix a fallthrough problem from the temporary code and make sure the
+    component status is set in the notargetarch case, even in the
+    temporary code.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 4 Feb 2009 12:45:00 -0800
+
+za-dependency-checker (2.16) unstable; urgency=low
+
+  * Unlock channel prior to exit.  Really exit on notargetarch in
+    singlepass case.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 4 Feb 2009 12:05:00 -0800
+
+za-dependency-checker (2.15) unstable; urgency=low
+
+  * Properly represent our state when we're simply scanning.  (ie, not
+    "scanning new" anymore.)
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 4 Feb 2009 11:45:00 -0800
+
+za-dependency-checker (2.14) unstable; urgency=low
+
+  * Drop "-p" from config args.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 3 Feb 2009 11:50:00 -0800
+
+za-dependency-checker (2.13) unstable; urgency=low
+
+  * Drop "-U" from config args.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 30 Jan 2009 14:30:00 -0800
+
+za-dependency-checker (2.12) unstable; urgency=low
+
+  * Silently skip "no target arch" errors.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 30 Jan 2009 13:15:00 -0800
+
+za-dependency-checker (2.11) unstable; urgency=low
+
+  * When looking to see whether a component is used, look in "moria"
+    rather than "nova".
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 27 Jan 2009 16:15:00 -0800
+
+za-dependency-checker (2.10) unstable; urgency=low
+
+  * When looking to see whether a component is used, look in "webos"
+    rather than "nova".
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 27 Jan 2009 16:15:00 -0800
+
+za-dependency-checker (2.9) unstable; urgency=low
+
+  * When looking to see whether a component is used, look in "webos"
+    rather than "nova".
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 27 Jan 2009 16:15:00 -0800
+
+za-dependency-checker (2.8) unstable; urgency=low
+
+  * On parse failure, go into sleepy loop.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 22 Jan 2009 14:00:00 -0800
+
+za-dependency-checker (2.7) unstable; urgency=low
+
+  * Discard components in the customization ring.  Drop explicit hwtools
+    mention.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 22 Jan 2009 11:40:00 -0800
+
+za-dependency-checker (2.6) unstable; urgency=low
+
+  * When looking for machines against which to build components, also
+    check the dependency graph of hwtools.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 19 Jan 2009 13:50:00 -0800
+
+za-dependency-checker (2.5) unstable; urgency=low
+
+  * Don't list log lines on notargetarch email.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 16 Jan 2009 11:00:00 -0800
+
+za-dependency-checker (2.4) unstable; urgency=low
+
+  * Add zepfloyd, qemuarm, and qemux86 to the list of machines to try.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 15 Jan 2009 11:45:00 -0800
+
+za-dependency-checker (2.3) unstable; urgency=low
+
+  * Throttle on failures to either anaconda or gecko.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 14 Jan 2009 13:30:00 -0800
+
+za-dependency-checker (2.2) unstable; urgency=low
+
+  * Attempt to handle components in the 'any' image.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 12 Jan 2009 14:15:00 -0800
+
+za-dependency-checker (2.1) unstable; urgency=low
+
+  * Rename, convert to css.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 16 Dec 2008 09:40:00 -0800
+
+nova-dependency-checker (1.29) unstable; urgency=low
+
+  * Fix a bad bug in init script.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 11 Dec 2008 11:00:00 -0800
+
+nova-dependency-checker (1.28) unstable; urgency=low
+
+  * Drop dependency on css.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 11 Dec 2008 09:25:00 -0700
+
+nova-dependency-checker (1.27) unstable; urgency=low
+
+  * Temporarily ignore component/packages in the "any" and "none" images.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 18 Nov 2008 17:00:00 -0700
+
+nova-dependency-checker (1.26) unstable; urgency=low
+
+  * Run seeder from it's proper location.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 18 Nov 2008 09:40:00 -0700
+
+nova-dependency-checker (1.25) unstable; urgency=low
+
+  * Set the seeder to run every 10 minutes.  Trying to understand why some
+    recent changes haven't been picked up properly.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 17 Nov 2008 16:45:00 -0700
+
+nova-dependency-checker (1.24) unstable; urgency=low
+
+  * Allow for the seeder case of a fresh installation.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 6 Nov 2008 10:25:00 -0700
+
+nova-dependency-checker (1.23) unstable; urgency=low
+
+  * Link to new stylesheet.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 5 Nov 2008 14:55:00 -0700
+
+nova-dependency-checker (1.22) unstable; urgency=low
+
+  * Depend on palm-manager-lookup and send email to owners manager as well
+    as owner.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 21 Oct 2008 14:00:00 -0700
+
+nova-dependency-checker (1.21) unstable; urgency=low
+
+  * Trottle when anaconda is failing, (not anteater).
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 20 Oct 2008 11:50:00 -0700
+
+nova-dependency-checker (1.20) unstable; urgency=low
+
+  * Adjust control encoding to compensate for components with "." in their name.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 16 Oct 2008 15:30:00 -0700
+
+nova-dependency-checker (1.19) unstable; urgency=low
+
+  * Move seeder back to once per day for now.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 16 Oct 2008 11:45:00 -0700
+
+nova-dependency-checker (1.18) unstable; urgency=low
+
+  * Adding bump-to-top-of-queue buttons.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 15 Oct 2008 15:40:00 -0700
+
+nova-dependency-checker (1.17) unstable; urgency=low
+
+  * Changed default email to use mailman.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 14 Oct 2008 16:55:00 -0700
+
+nova-dependency-checker (1.16) unstable; urgency=low
+
+  * Don't do recursive chown in init script.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 14 Oct 2008 14:20:00 -0700
+
+nova-dependency-checker (1.15) unstable; urgency=low
+
+  * New seeder also tracks removals.  Also, run it hourly for now.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 14 Oct 2008 14:15:00 -0700
+
+nova-dependency-checker (1.14) unstable; urgency=low
+
+  * Normalize email subject lines.
+  * Corrected ownership of workdir.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 13 Oct 2008 11:00:00 -0700
+
+nova-dependency-checker (1.13) unstable; urgency=low
+
+  * Drop the big chown.  Something else will need to be done here.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 10 Oct 2008 14:00:00 -0700
+
+nova-dependency-checker (1.12) unstable; urgency=low
+
+  * Revised crontab format.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Fri, 10 Oct 2008 13:30:00 -0700
+
+nova-dependency-checker (1.11) unstable; urgency=low
+
+  * remove disable file but don't fail if it doesn't exist.  (init)
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 8 Oct 2008 14:36:00 -0700
+
+nova-dependency-checker (1.10) unstable; urgency=low
+
+  * touch & remove disable file on stop/start in init file.
+  * teach init file to restart individual threads
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 8 Oct 2008 14:00:00 -0700
+
+nova-dependency-checker (1.9) unstable; urgency=low
+
+  * Change default email address from nova.build to build.
+  * Only symlink to ~checker/.subversion on postinst if the symlink
+    doesn't already exist.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 8 Oct 2008 11:15:00 -0700
+
+nova-dependency-checker (1.8) unstable; urgency=low
+
+  * Correct disk space available report on web page.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Wed, 8 Oct 2008 11:10:00 -0700
+
+nova-dependency-checker (1.7) unstable; urgency=low
+
+  * Add logrotate support.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 7 Oct 2008 16:20:00 -0700
+
+nova-dependency-checker (1.6) unstable; urgency=low
+
+  * Rework cron tab entries.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 7 Oct 2008 16:00:00 -0700
+
+nova-dependency-checker (1.5) unstable; urgency=low
+
+  * Set ownerships of builderdirs when we make them.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 6 Oct 2008 16:00:00 -0700
+
+nova-dependency-checker (1.4) unstable; urgency=low
+
+  * Protect prerm script.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 6 Oct 2008 15:00:00 -0700
+
+nova-dependency-checker (1.3) unstable; urgency=low
+
+  * Protect postinst script.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Mon, 6 Oct 2008 14:00:00 -0700
+
+nova-dependency-checker (1.2) unstable; urgency=low
+
+  * Ongoing debugging.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 30 Sep 2008 13:30:00 -0700
+
+nova-dependency-checker (1.1) unstable; urgency=low
+
+  * First attempt at init scripts.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Tue, 30 Sep 2008 12:30:00 -0700
+
+nova-dependency-checker (1.0) unstable; urgency=low
+
+  * Initial Release.
+
+ -- Rich Pixley <rich.pixley@palm.com>  Thu, 24 Sep 2008 15:30:00 -0700

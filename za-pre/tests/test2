@@ -1,0 +1,26 @@
+From Rich.Pixley@palm.com  Fri Aug  1 14:27:49 2008
+Return-Path: <Rich.Pixley@palm.com>
+X-Original-To: nova-submissions@camel.palm.com
+Delivered-To: nova-submissions@camel.palm.com
+Received: from smtp-relay1.palm.com (ussanumg001.palm.com [148.92.198.70])
+	by camel.palm.com (Postfix) with SMTP id 9E4122C04A
+	for <nova-submissions@camel.palm.com>; Fri,  1 Aug 2008 14:27:49 -0700 (PDT)
+X-IronPort-AV: E=Sophos;i="4.31,295,1215414000"; 
+   d="scan'208";a="6130960"
+Received: from unknown (HELO mailhost01.palm.com) ([148.92.223.30])
+  by smtp-relay1.palm.com with ESMTP; 01 Aug 2008 14:27:49 -0700
+Received: from ushqua046.palm.com ([148.92.202.94])
+	by mailhost01.palm.com (8.13.6+Sun/8.12.10) with ESMTP id m71LRntH005161
+	for <nova-submissions@camel.palm.com>; Fri, 1 Aug 2008 14:27:49 -0700 (PDT)
+Message-ID: <1553895119.37691217626064965.JavaMail.root@ushqua046.palm.com>
+Date: Fri, 1 Aug 2008 14:27:44 -0700 (PDT)
+From: Rich Pixley <Rich.Pixley@palm.com>
+To: nova-submissions@camel.palm.com
+Subject: [confluence] Nova Submission
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Precedence: bulk
+
+submission: palmbuildinfo=1
+releasenotes: whatever

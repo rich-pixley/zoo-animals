@@ -1,0 +1,107 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Sample debian/rules that uses debhelper.
+# This file was originally written by Joey Hess and Craig Small.
+# As a special exception, when this file is copied by dh-make into a
+# dh-make output file, you may use that output file without restriction.
+# This special exception was added by Craig Small in version 0.37 of dh-make.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+CFLAGS = -Wall -g
+
+.PHONY: build
+build:	build-indep
+
+.PHONY: build-indep
+build-indep: build-stamp docs-stamp check-stamp
+build-stamp: configure-stamp
+	dh_testdir
+	dh_auto_build
+	touch $@
+
+.PHONY: docs
+docs: docs-stamp
+docs-stamp:
+	dh_testdir
+	$(MAKE) docs
+	touch $@
+
+.PHONY: check
+check: check-stamp
+check-stamp: build-stamp
+	dh_testdir
+	dh_auto_test
+	touch $@
+
+.PHONY: configure
+configure: configure-stamp
+configure-stamp:
+	dh_testdir
+	dh_auto_configure -v
+
+.PHONY: clean
+clean:
+	dh_testdir
+	dh_auto_clean
+	rm -f build-stamp configure-stamp
+	dh_clean 
+
+.PHONY: install
+install: install-stamp
+install-stamp: build-stamp
+	dh_testdir
+	dh_testroot
+	dh_prep
+	$(MAKE) install-post DESTDIR=$(CURDIR)/debian/za-post
+	$(MAKE) install-d DESTDIR=$(CURDIR)/debian/za-postd
+	$(MAKE) install-conf DESTDIR=$(CURDIR)/debian/za-conf
+	$(MAKE) install-php-utils DESTDIR=$(CURDIR)/debian/za-php-utils
+	$(MAKE) install-base DESTDIR=$(CURDIR)/debian/za-base
+	$(MAKE) install-apache-config DESTDIR=$(CURDIR)/debian/za-apache-config
+	$(MAKE) install-machine-info DESTDIR=$(CURDIR)/debian/za-machine-info
+	$(MAKE) install-machine-matrix DESTDIR=$(CURDIR)/debian/za-machine-matrix
+	$(MAKE) install-pre DESTDIR=$(CURDIR)/debian/za-pre
+	dh_installinit --no-start
+	dh_installcron
+	dh_installlogrotate
+	dh_installchangelogs
+	dh_installdocs
+	touch $@
+
+# Build architecture-independent files here.
+.PHONY: binary-indep
+binary-indep: build install
+	dh_testdir
+	dh_testroot
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_gencontrol
+	dh_builddeb
+
+# Build architecture-dependent files here.
+.PHONY: binary-arch
+binary-arch:
+
+.PHONY: build-arch
+build-arch:
+
+.PHONY: binary
+binary: binary-indep binary-arch

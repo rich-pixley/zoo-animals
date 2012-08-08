@@ -1,0 +1,85 @@
+#!/bin/sh -e
+### BEGIN INIT INFO
+# Provides:          za-postd
+# Required-Start:    $remote_fs $syslog $named $network $time $mail-transport-agent
+# Required-Stop:     $remote_fs $syslog $named $network $time $mail-transport-agent
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Starts the zoo animal post-commit checker services daemon.
+# Description:       Starts the zoo animal post-commit checker services daemon.
+### END INIT INFO
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+bindir==bindir=
+mylibexecdir==mylibexecdir
+
+BINARY=${mylibexecdir}/ZApostd
+conftool="${bindir}/ZAconf -s za-post"
+workdir="`${conftool} -k workdir`"
+
+test -x ${BINARY} || exit 0
+
+if [ -r /etc/default/za-postd ] ; then
+    . /etc/default/za-postd
+fi
+
+# Get lsb functions
+. /lib/lsb/init-functions
+
+if [ ! -d ${workdir} ] ; then
+    /bin/mkdir -p ${workdir}
+    owner=`${conftool} -k owner`
+    /bin/chown ${owner} ${workdir}
+fi
+
+case "$1" in
+    start)
+	log_begin_msg "Starting post-commit checker services..."
+	rm -f ${workdir}/zadc-socket
+	start-stop-daemon \
+	    --signal 9 \
+	    --retry 2 \
+	    --verbose \
+	    --nicelevel 15 \
+	    --background \
+	    --chdir ${workdir} \
+	    --chuid za-post \
+	    --start \
+	    --oknodo \
+	    --startas ${BINARY} \
+	    --pidfile /var/run/ZApostd.pid \
+	    --make-pidfile \
+	    -- $OPTIONS
+	log_end_msg $?
+	;;
+
+    stop)
+	log_begin_msg "Stopping post-commit checker services..."
+	start-stop-daemon --verbose --stop --oknodo --retry 2 --pidfile /var/run/ZApostd.pid --user za-post
+	log_end_msg $?
+	;;
+
+    restart|reload|force-reload)
+    	$0 stop $2
+	sleep 1
+	$0 start $2
+	;;
+
+    *)
+    	log_success_msg "Usage: /etc/init.d/za-postd {start|stop|restart|reload|force-reload}"
+	exit 1
+	;;
+esac

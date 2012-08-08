@@ -1,0 +1,55 @@
+# -*- text -*-
+
+LDAPTrustedGlobalCert CA_BASE64 /etc/ssl/certs/palmca.crt
+NameVirtualHost *:80
+NameVirtualHost *:443
+
+<VirtualHost *:80>
+	ServerName @HOST@.@DOMAIN@
+	Redirect permanent / https://@HOST@.@DOMAIN@/
+</VirtualHost>
+
+<VirtualHost *:443>
+	ServerName @HOST@.@DOMAIN@
+	ServerAdmin webmaster@localhost
+	
+	DocumentRoot /var/www/
+	<Directory />
+		Options Indexes FollowSymLinks MultiViews
+		AllowOverride None
+		Order allow,deny
+		allow from all
+	</Directory>
+
+	# <Directory "/var/www/za-pre-form">
+	# 	AllowOverride AuthConfig
+	# </Directory>
+
+	AliasMatch ^/za-pre-([^/]*)(/.*)?$ /home/za-pre-$1/zoo-animals/za-pre/webos/$2
+	<DirectoryMatch /home/za-sc-.*>
+		Order allow,deny
+		Allow from all
+	</DirectoryMatch>
+
+	# ScriptAlias /cgi-bin/ /usr/lib/cgi-bin/
+	# <Directory "/usr/lib/cgi-bin">
+	# 	AllowOverride None
+	# 	Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+	# 	Order allow,deny
+	# 	Allow from all
+	# </Directory>
+
+	ErrorLog /var/log/apache2/error.log
+
+	# Possible values include: debug, info, notice, warn, error, crit,
+	# alert, emerg.
+	LogLevel warn
+
+	CustomLog /var/log/apache2/access.log combined
+	ServerSignature On
+
+	SSLEngine on
+	SSLCertificateFile	/etc/ssl/certs/@HOST@.@DOMAIN@.crt
+	SSLCertificateKeyFile	/etc/ssl/private/@HOST@.@DOMAIN@.key
+	SSLCACertificateFile	/etc/ssl/certs/verisign.crt
+</VirtualHost>

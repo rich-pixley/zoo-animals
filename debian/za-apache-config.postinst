@@ -1,0 +1,44 @@
+#!/bin/sh
+
+set -x
+set -e
+
+for i ; do
+    case "$i" in
+	configure)
+		hostname=`hostname`
+		domainname=`dnsdomainname`
+		fqdn=${hostname}.${domainname}
+		target=/etc/apache2/sites-available/${fqdn}
+
+		a2enmod python
+
+		sed -e "/@HOST@/s::${hostname}:g" \
+		    -e "/@DOMAIN@/s::${domainname}:g" \
+		    < /usr/share/za-apache-config/site-template \
+		    > ${target}-new
+
+		mv ${target}-new ${target}
+
+		(cd /etc/apache2/sites-enabled && rm * && ln -s ../sites-available/${fqdn} 001-${fqdn})
+		(cd /etc/apache2/mods-enabled; \
+		    for i in authnz_ldap.load ldap.load php5.conf php5.load ssl.conf ssl.load ; do \
+			[ -L $i ] || ln -s ../mods-available/$i ; \
+		    done)
+
+		target=/etc/apache2/mods-available/ssl.conf
+
+		sed \
+		    -e '/^#SSLCipherSuite HIGH/s//SSLCipherSuite HIGH/' \
+		    -e '/^#SSLProtocol/s//SSLProtocol/' \
+		    < ${target} \
+		    > ${target}-new
+
+		mv ${target}-new ${target}
+
+		invoke-rc.d apache2 restart
+		;;
+    esac
+done
+
+#DEBHELPER#

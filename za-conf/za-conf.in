@@ -1,0 +1,35 @@
+[DEFAULT]
+
+[za-post]
+owner: =postowner=
+workdir: =postlocalstatedir=
+
+mail-to-owners: False
+mail-to-owners-bosses: False
+channels: 1
+
+mailfailures: za-post
+mailsuccesses: za-post
+configargs: --enable-deterministic-buildinfo
+checkrange: ganymede
+
+[za-pre]
+owner = =preowner=
+workdir = =prelocalstatedir=
+
+fsmountpoint = /home
+
+all-full-builds = False
+back-to-back = False
+changes-blocked = True
+validations-blocked = True
+days-to-keep-stats = 21
+
+low-water = 50000000
+high-water = 50000000
+
+hookscript = =mylibexecdir=/hookscript-stub
+
+[other]
+svnloc: http://subversion.palm.com/main/nova/oe/trunk
+targetlist: topaz qemux86 goodlife

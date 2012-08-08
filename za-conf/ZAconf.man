@@ -1,0 +1,28 @@
+.TH ZACONF "8" "June 2012" "zaconf" "User Commands"
+.SH NAME
+ZAconf \- a shell callable tool for dealing with python config files
+.SH SYNOPSIS
+.B ZAconf
+[\fI[\-c|\-\-config] FILE\fI] [\-s|\-\-section SECTION [\-k|\-\-key KEY]] VALUE\fR
+.SH DESCRIPTION
+With no arguments, ZAconf reads the config file and prints a list of the
+sections in the configuration file.
+.PP
+If a section is specified, ZAconf reads the config file and prints a list of the
+keys in the named section.
+.PP
+If a section and a key are specified, ZAconf reads the config files and prints
+the value of the named key in the named section.
+.PP
+If a section, a key, and a value are all specified, then ZAconf reads the config
+file and sets the value for the named key in the named section to the specified
+value and the resulting config file is rewritten.
+.PP
+The default config file is /etc/za.conf but can be specified using the \-c or
+\-\-config options.
+.SH AUTHOR
+Written by Rich Pixley.
+.SH "REPORTING BUGS"
+Report bugs to <rich.pixley@palm.com>.
+.SH COPYRIGHT
+Copyright \(co 2008 - 2012 Hewlett-Packard Development Company, L.P.

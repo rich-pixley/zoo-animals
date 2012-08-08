@@ -1,0 +1,35 @@
+Zoo Animals for Debian/Ubuntu
+=============================
+
+Contents of this file:
+0. Apache
+1. Other Webservers
+N. Getting Help
+
+
+Apache
+======
+
+If you want to use zoo animals with apache, it is recommended to modify
+/etc/zoo-animals/apache.conf to your own wishes, and then add a symlink to
+that file from /etc/apache2/conf.d, like:
+
+ $ ln -s /etc/zoo-animals/apache.conf /etc/apache2/conf.d/zoo-animals.conf
+
+Alternatively, you could also 'Include' the configuration file in the relevant
+apache configuration file(s).
+
+
+Other webservers
+================
+
+You need to create an alias in your web server pointing:
+
+http://localhost/zoo-animals/
+
+at /usr/share/za-base/.  Adding a symlink in your webroot may be all
+you need.
+
+
+Where to get help
+=================

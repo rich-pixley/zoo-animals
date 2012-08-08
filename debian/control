@@ -1,0 +1,121 @@
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+Source: zoo-animals
+Section: devel
+Priority: extra
+Maintainer: Rich Pixley <rich.pixley@palm.com>
+Uploaders: Lloyd Chang <lloyd.chang@palm.com>
+Build-Depends:
+	debhelper (>= 5),
+	fakeroot,
+	python-psutil,
+	python-sphinx,
+Standards-Version: 3.9.3
+
+Package: za-base
+Architecture: all
+Depends: python, ${misc:Depends}
+Description: Files common to the zoo animal web pages
+ In one place for convenience.
+
+Package: za-conf
+Architecture: all
+Depends:
+	python3,
+	${misc:Depends},
+Description: config file accessing tool
+ config file accessing tool - creates a shell callable interface for
+ accessing python config files.
+
+Package: za-php-utils
+Architecture: all
+Depends:
+	php5,
+	za-base,
+	${misc:Depends}
+Description: Couple of tiny but problematic php programs to serve logs
+ The problem here is that they aren't restricted to serving only
+ logs.  They should probably be either narrowed in scope or eliminated
+ by inlining.
+
+Package: za-apache-config
+Architecture: all
+Depends:
+	${misc:Depends},
+	apache2,
+	libapache2-mod-php5,
+	libapache2-mod-python,
+	libapache2-mod-wsgi,
+	php5,
+	php5-cli,
+	php5-common,
+Description: Local configuration of apache for zoo animals
+ Local configuration of apache for servers running zoo animals.
+
+Package: za-machine-info
+Architecture: all
+Depends:
+	${misc:Depends},
+	za-base,
+Description: Simple web page for machine stats
+ Blah, blah, blah.
+
+Package: za-machine-matrix
+Architecture: all
+Depends: 
+	 ${misc:Depends},
+	 za-base (>= 2.16),
+	 za-php-utils,
+Description: Web based status overview for the zoo animals
+ blah, blah, blah
+
+Package: za-pre
+Architecture: all
+Depends:
+	${misc:Depends},
+	adduser,
+	btrfs-tools,
+	python3,
+	za-base (>= 2.18),
+	za-machine-matrix,
+	za-php-utils,
+Description: zoo animal post commit checker
+ blah, blah
+
+Package: za-postd
+Architecture: all
+Depends:
+	${misc:Depends},
+	python,
+	python-psutil,
+	python-svn,
+	za-conf,
+Description: post commit checker services daemon
+ the post commit checker services daemon manages locks and the work
+ queue.
+
+Package: za-post
+Architecture: all
+Depends:
+	${misc:Depends},
+	python,
+	python3,
+	za-conf,
+	za-merge-timings,
+	za-php-utils,
+	za-postd,
+Description: post commit checker for nova
+ further descriptions go here.
+

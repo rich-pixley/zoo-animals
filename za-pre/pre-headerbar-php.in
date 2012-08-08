@@ -1,0 +1,75 @@
+<!--
+Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you
+may not use this file except in compliance with the License.  You may
+obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied.  See the License for the specific language governing
+permissions and limitations under the License.
+-->
+
+<?php
+
+$prefix = "=prefix=";
+$exec_prefix = "=exec_prefix=";
+$bindir = "=bindir=";
+
+$conftool = $bindir . "/ZAconf -s za-pre";
+
+$workdir = trim(`$conftool -k workdir`);
+$lockfile =    "$workdir/LOCK";
+$lastbuilt = "$workdir/last-built";
+$lastfull = "$workdir/last-full";
+$checktargetfile = "$workdir/checktargets";
+$configargsfile = "$workdir/configargs";
+$lowwaterfile = "$workdir/lowwater";
+$highwaterfile = "$workdir/highwater";
+$disablefile = "$workdir/disable";
+$disableapplicationfile = "$workdir/disable-application";
+$logfile =     "$workdir/checkloop.log";
+$svnlocfile = "$workdir/svnloc";
+$bomlocfile = "$workdir/bomloc";
+$svnbomlocfile = "$workdir/svnbomloc";
+$hostname = gethostbyaddr(gethostbyname(gethostname()));
+$backtobackfile = "$workdir/back-to-back";
+$allfullbuildsfile = "$workdir/all-full-builds";
+
+$svnloc = file_exists($svnlocfile)
+    ? htmlspecialchars(trim(file_get_contents($svnlocfile)))
+    : "http://subversion.palm.com/main/nova/oe/trunk";
+
+$bomloc = file_exists($bomlocfile)
+    ? htmlspecialchars(trim(file_get_contents($bomlocfile)))
+    : "palm/conf/distro/nova-bom.inc";
+
+$svnbomloc = file_exists($svnbomlocfile)
+    ? htmlspecialchars(trim(file_get_contents($svnbomlocfile)))
+    : $svnloc . "/" . $bomloc;
+
+clearstatcache();
+
+$prethirdbar = array("configs" => new headeritem("../za-pre/configs.php", "normal"),
+	"status" => new headeritem("../za-pre/status.php", "normal"),
+	"log" => new headeritem("../za-pre/log.php", "normal"));
+
+if (!isset($_SESSION)) {
+   session_start();
+}
+ 
+if (!empty($_SESSION['username'])) {
+   $prethirdbar['logout'] = new headeritem("../za-pre/logout.php", "normal");
+}
+
+function gen_prethirdbar($highlight) {
+	global $prethirdbar;
+	$prethirdbar[$highlight]->status = "current";
+	return $prethirdbar;
+}
+
+?>

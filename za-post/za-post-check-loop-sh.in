@@ -1,0 +1,579 @@
+#!/bin/sh
+# Time-stamp: <21-Jun-2012 02:16:13 PDT by rich.pixley@palm.com>
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Usage: $0 [ -e ] [ -c channel ] [ -1 ]
+
+#set -x
+set -e
+
+bindir==bindir=
+mylibexecdir==mylibexecdir=
+
+LOGNAME=${LOGNAME:-za-post}
+conftool="${bindir}/ZAconf -s za-post"
+workdir=`${conftool} -k workdir`
+
+attemptsdir=${workdir}/attempts
+bomtool=/opt/Palm/za-bom/bin/ZAbom.py
+builderdir=${workdir}/builders
+disableapplicationfile=${workdir}/disable-application
+defaultfile=/etc/default/za-post
+disablefile=${workdir}/disable
+logfile=${workdir}/checkloop.log
+#loglevel=info
+loglevel=debug
+logname=`basename $0`
+loopcount=0
+channellocksfile=${workdir}/channel.locks
+
+zapostgen="${mylibexecdir}/ZApostgen"
+
+# stats
+# statlog format is:
+# iso9660date seconds component status start reap co notargetarch targetarch built done
+# empty fields contain "na"
+statlog=${workdir}/statlog
+start_time=na
+reap_time=na
+co_time=na
+skipped_time=na
+notargetarch_time=na
+targetarch_time=na
+built_time=na
+done_time=na
+
+mergetimings=${mylibexecdir}/merge-timings
+
+logfmt="+%Y-%m-%dT%H:%M:%S"
+timingfmt="+%s"
+
+channel=
+
+### disable trick - if the file exists, exit immediately, unless we
+### have any arguments.  This let's me disable any incoming build
+### requests while still being able to work.
+args=""
+nextarg=
+for i ; do
+    case "$nextarg" in
+	channel)
+		channel=$i
+
+		channeldir="${builderdir}/${channel}"
+		mkdir -p ${channeldir}
+		if ${zapostgen} -L channel:${channel} -F ${logfile} >> ${logfile} ; then
+		    :
+		else
+		    echo `date ${logfmt}` $0 pid=$$ failed to claim requested channel ${channel} >> ${logfile}
+		    exit 1
+		fi
+
+		channellogfile=${channellogfile:-${channeldir}/log}
+		echo `date ${logfmt}` $0 pid=$$ requested channel ${channel} >> ${channellogfile}
+
+		nextarg=
+		args="${args} $i"
+		continue
+		;;
+
+	count)
+	    loopcount=$i
+	    nextarg=
+	    continue
+	    ;;
+
+	loglevel)
+	    loglevel=$i
+	    nextarg=
+	    continue
+	    ;;
+
+	todo)
+		todo=$i
+		nextarg=
+		args="${args} $i"
+		continue
+		;;
+	"") ;;
+    esac
+
+    case "$i" in
+	-C)
+	    nextarg=channel
+	    args="${args} $i"
+	    ;;
+	-c)
+	    nextarg=count
+	    ;;
+	-e)
+	    enable=yes
+	    args="${args} $i"
+	    ;;
+	-n)
+	    nextarg=todo
+	    args="${args} $i"
+	    ;;
+	-t)
+	    logfile=/dev/tty
+	    channellogfile=/dev/tty
+	    args="${args} $i"
+	    ;;
+	-v)
+	    nextarg=loglevel
+	    args="${args} $i"
+	    ;;
+	-x)
+	    set -x
+	    args="${args} $i"
+	    ;;
+	*)
+    	    echo `date ${logfmt}` $0 pid=$$ Unrecognized Option: $i >> ${logfile}
+	    exit 1
+	    ;;
+    esac
+done
+
+case "${enable}" in
+    yes) ;;
+
+    *)
+    	if [ -e ${disablefile} -o -e ${disableapplicationfile} ] ; then
+	    exit 0
+	fi
+	;;
+esac
+
+MCF="./mcf"
+
+mailsuccesses="`${conftool} -k mailsuccesses`"
+mailsuccesses="${mailsuccesses:-`${conftool} -k owner`}"
+
+mailfailures="`${conftool} -k mailfailures`"
+mailfailures="${mailfailures:-`${conftool} -k owner`}"
+
+svnloc="`${conftool} -k svnloc`"
+svnloc="${svnloc:-exit 1}"
+
+targetlist="`${conftool} -k targetlist`"
+targetlist="${targetlist:qemux86}"
+
+configargs="`${conftool} -k configargs`"
+configargs="${configargs:---enable-deterministic-buildinfo}"
+
+checkrange="`${conftool} -k checkrange`"
+checkrange="${checkrange:-ganymede}"
+
+### find ourselves a channel.
+
+case "${channel}" in
+    "")
+	# default our list of channels
+        BUILDERS=only
+
+	# then read, (and overwrite default), list of channels
+        if [ -r ${defaultfile} ] ; then
+	    . ${defaultfile}
+	fi
+
+	channelcount=`${conftool} -k channels`
+	BUILDERS=`python3 -c "print(' '.join(['channel{:0=2}'.format(i) for i in range(${channelcount})]))"`
+
+	# next, walk the list of existing builder and remove any that
+	# aren't declared.
+	if [ -d ${builderdir} ] ; then
+	    echo `date ${logfmt}` $0 pid=$$ found builderdir ${builderdir} >> ${logfile}
+
+	    for i in ${builderdir}/* ; do
+		echo `date ${logfmt}` $0 pid=$$ considering $i... >> ${logfile}
+
+		if [ -d $i ] ; then
+		    echo `date ${logfmt}` $0 pid=$$ $i is a directory... >> ${logfile}
+		    b=`basename $i`
+
+		    for j in ${BUILDERS} @@final@@ ; do
+			case "$j" in
+			    $b)
+			    	echo `date ${logfmt}` $0 pid=$$ $b is a declared channel. >> ${logfile}
+				break
+				;;
+
+			    @@final@@) 
+			    	echo `date ${logfmt}` $0 pid=$$ removing extraneous channel $b >> ${logfile}
+				rm -rf $i
+				;;
+
+			    *) ;;
+			esac
+		    done
+		else
+		    echo `date ${logfmt}` $0 pid=$$ $i is not a directory... >> ${logfile}
+		fi
+
+		echo `date ${logfmt}` $0 pid=$$ $i considered. >> ${logfile}
+	    done
+	else
+	    echo `date ${logfmt}` $0 pid=$$ found no builderdir ${builderdir} >> ${logfile}
+	fi
+
+	# then walk the BUILDERS to see if any are available.
+	for channel in ${BUILDERS} ; do
+	    if ${zapostgen} -L channel:${channel} -v ${loglevel} -F ${logfile} >> ${logfile} ; then
+		channeldir="${builderdir}/${channel}"
+
+		if [ ! -d ${channeldir} ] ; then
+		    mkdir -p ${channeldir}
+		    echo `date ${logfmt}` $0 pid=$$ initializing channel ${channel} >> ${logfile}
+		fi
+
+		channellogfile=${channellogfile:-"${channeldir}/log"}
+		echo `date ${logfmt}` $0 pid=$$ is now channel ${channel} >> ${logfile}
+		break;
+	    fi
+	done
+
+	case "${channeldir}" in
+	    "")
+    	    	echo `date ${logfmt}` $0 pid=$$ could not find channel >> ${logfile}
+		exit 1
+	    	;;
+	    *) ;;
+	esac
+	;;
+
+    *) ;;
+esac
+
+cd ${channeldir}
+
+statusfile=${channeldir}/status
+
+### having found a channel, we need to decide which component to
+### build.  This is now done as an outcall.
+
+case "${todo}" in
+    "") todoarg="" ;;
+    *) todoarg="-n ${todo}" ;;
+esac
+
+zadctmp=/tmp/zadc.$$
+echo `date ${logfmt}` $0 pid=$$ looking for work ${todoarg} >> ${channellogfile}
+if (${zapostgen} ${todoarg} -v ${loglevel} -F ${channellogfile} > ${zadctmp}) >> ${channellogfile} 2>&1 ; then
+    :
+else
+    echo `date ${logfmt}` $0 pid=$$ ZApostgen ${todoarg} failed. >> ${channellogfile}
+    exit 1
+fi
+todo=`cat ${zadctmp}`
+tododir=${attemptsdir}/${todo}
+
+echo `date ${logfmt}` $0 pid=$$ Claimed ${todo} >> ${channellogfile}
+echo ${todo} prep > ${statusfile}-new
+mv -f ${statusfile}-new ${statusfile}
+
+timings=${tododir}/timings
+todostatsdir=${tododir}/stats
+
+# component rollups - immediately before starting fresh timings
+[ -d ${todostatsdir} ] || mkdir ${todostatsdir}
+if [ -e ${tododir}/status -a -e ${timings} ] ; then
+    rollup=${todostatsdir}/"`cat ${tododir}/status`"
+
+    [ -e ${rollup} ] || touch ${rollup}
+    ${mergetimings} ${rollup} ${timings} > ${rollup}-new
+    mv ${rollup}-new ${rollup}
+fi
+
+start_time=`date ${timingfmt}`
+echo ${start_time} start > ${timings}
+
+if [ -e oe/sources/svn ] ; then
+    mv oe/sources/svn rmme
+fi
+
+[ -d rmme ] || mkdir rmme
+mv oe/build_* oe/BUILD-* rmme > /dev/null 2>&1 || true
+echo `date ${logfmt}` $0 pid=$$ Counting space... >> ${channellogfile}
+echo `date ${logfmt}` $0 pid=$$ Removing `du -h -s rmme | awk '{print $1;}'` of old binaries... >> ${channellogfile}
+rm -rf rmme
+echo `date ${logfmt}` $0 pid=$$ Done removing. >> ${channellogfile}
+
+reap_time=`date ${timingfmt}`
+echo ${reap_time} reap >> ${timings}
+
+got_co=false
+for i in 1 2 3 4 5 6 7 8 9 10 11 12 ; do
+    echo `date ${logfmt}` $0 pid=$$ Checking out attempt number $i... >> ${channellogfile}
+    echo `date ${logfmt}` $0 pid=$$ Checking out attempt number $i... >> svnlog
+    if time svn co -q ${svnloc} oe >> svnlog 2>&1 ; then
+	got_co=true
+	echo `date ${logfmt}` $0 pid=$$ Got. >> ${channellogfile}
+	break
+    fi
+
+    echo `date ${logfmt}` $0 pid=$$ svn check out failed attempt number $i. retrying... >> ${channellogfile}
+
+    if [ -e oe ] ; then
+	mv oe rmme
+    fi
+
+    rm -rf rmme
+done
+
+case "${got_co}" in
+    false)
+        echo `date ${logfmt}` $0 pid=$$ svn check out failed all attempts: exiting >> ${channellogfile}
+	${zapostgen} -U component:${todo} -v ${loglevel} -F ${channellogfile}
+	${zapostgen} -U channel:${channel} -v ${loglevel} -F ${logfile} >> ${logfile}
+	(flock -x 8; echo `date ${logfmt}` `date ${timingfmt}` ${todo} co-failed ${start_time} ${reap_time} ${co_time} ${notargetarch_time} ${targetarch_time} ${built_time} ${done_time} >> ${statlog}) 8>> ${statlog}
+	date >> svnlog
+	df >> svnlog
+	exit 1
+	;;
+esac
+
+co_time=`date ${timingfmt}`
+echo ${co_time} co >> ${timings}
+
+sed -ne "/'${todo}'/s/^[ \t]*('${todo}', *'\([^']*\)', *'\([^']*\)', *'\([^']*\)', *'\([^']*\)'.*$/\1/p" \
+    < oe/palm/conf/distro/nova-bom.inc \
+    > ${tododir}/image-new
+mv ${tododir}/image-new ${tododir}/image
+
+sed -ne "/'${todo}'/s/^[ \t]*('${todo}', *'\([^']*\)', *'\([^']*\)', *'\([^']*\)', *'\([^']*\)'.*$/\2/p" \
+    < oe/palm/conf/distro/nova-bom.inc \
+    > ${tododir}/owner-new
+mv ${tododir}/owner-new ${tododir}/owner
+
+sed -ne "/'${todo}'/s/^[ \t]*('${todo}', *'\([^']*\)', *'\([^']*\)', *'\([^']*\)', *'\([^']*\)'.*$/\3/p" \
+    < oe/palm/conf/distro/nova-bom.inc \
+    > ${tododir}/version-new
+mv ${tododir}/version-new ${tododir}/version
+
+sed -ne "/'${todo}'/s/^[ \t]*('${todo}', *'\([^']*\)', *'\([^']*\)', *'\([^']*\)', *'\([^']*\)'.*$/\4/p" \
+    < oe/palm/conf/distro/nova-bom.inc \
+    > ${tododir}/submission-new
+mv ${tododir}/submission-new ${tododir}/submission
+
+image=`cat ${tododir}/image`
+case "${image}" in
+    none)
+        status=skipped
+	skipped_time=`date ${timingfmt}`
+	echo ${skipped_time} skipped >> ${timings}
+	echo ${todo} skipped > ${statusfile}-new
+	mv ${statusfile}-new ${statusfile}
+	echo `date ${logfmt}` $0 pid=$$ Skipping ${todo} and recurring... >> ${channellogfile}
+	touch ${tododir}/loglast-new
+	;;
+
+    *)
+        echo ${todo} parsing > ${statusfile}-new
+	mv ${statusfile}-new ${statusfile}
+	echo `date ${logfmt}` $0 pid=$$ Parsing ${todo} >> ${channellogfile}
+
+	rm -f ${tododir}/loglast-new
+
+        # on failure parsing, go into sleepy loop.
+	status=notargetarch
+	for i in ${targetlist} ; do
+	    : checking for target $i
+	    : todo is ${todo}
+	    # config & parse  (looking for early errors)
+	    : parsing...
+	    if (set -x \
+		&& cd oe \
+		&& ${MCF} ${configargs} $i \
+		&& time make BBFLAGS=-p just-${todo}) >> ${tododir}/loglast-new 2>&1 ; then
+
+		: generating and searching dependencies...
+		if (set -x \
+		    && cd oe \
+		    && time make BBFLAGS=-g ${checkrange} SUPPRESS_FETCHALL=true > ${tododir}/loglast-new 2>&1 \
+		    && grep -q -e "\"${todo}\"" BUILD-$i/depends.dot) >> ${tododir}/loglast-new 2>&1 ; then
+		    status=found
+		    targetarch=$i
+		    break
+		else
+		    [ -d rmme ] || mkdir rmme
+		    mv oe/BUILD-* rmme
+		    rm -rf rmme
+		fi
+	    else
+		status=failed
+
+		# on parse failure, 
+		touch ${workdir}/FAILING
+		echo `date ${logfmt}` $0 pid=$$ channel=${channel} sleeping and recurring on parse failure >> ${logfile}
+		echo sleeping... > ${statusfile}-new
+		mv ${statusfile}-new ${statusfile}
+		sleep 600
+		break
+	    fi
+    done
+
+    case "${status}" in
+    found)
+	    echo ${targetarch} > ${tododir}/targetarch-new
+	    mv ${tododir}/targetarch-new ${tododir}/targetarch
+
+	    targetarch_time=`date ${timingfmt}`
+	    echo ${targetarch_time} targetarch >> ${timings}
+
+	    echo ${todo} building > ${statusfile}-new
+	    mv ${statusfile}-new ${statusfile}
+	    echo `date ${logfmt}` $0 pid=$$ Building ${todo} for ${targetarch} >> ${channellogfile}
+
+	    if (set -x \
+		&& cd oe \
+		&& ${MCF} ${configargs} ${targetarch} \
+		&& time make just-${todo}) >> ${tododir}/loglast-new 2>&1 ; then
+		status=built
+		built_time=`date ${timingfmt}`
+		echo ${built_time} built >> ${timings}
+	    else
+		status=failed
+	    fi
+	    ;;
+
+    notargetarch)
+	    echo `date ${logfmt}` $0 pid=$$ no target arch >> ${channellogfile}
+	    echo `date ${logfmt}` $0 pid=$$ no target arch >> ${tododir}/loglast-new
+
+	    notargetarch_time=`date ${timingfmt}`
+	    echo ${notargetarch_time} notargetarch >> ${timings}
+	    ;;
+    *)
+	    ;;
+    esac
+    ;;
+esac
+
+case "${status}" in
+built|skipped)
+	mailto="${mailsuccesses}"
+	;;
+*) 
+	${bomtool} < oe/palm/conf/distro/nova-bom.inc > bomshell
+	owner=`awk "\\$1 == \\"${todo}\\" { print \\$3; }" < bomshell`
+	mailto="${mailfailures}"
+
+	case "`${conftool} -k mail-to-owners`" in
+	    yes|True|on)
+		    mailto="${mailto} ${owner}"
+		    case "`${conftool} -k mail-to-owners-bosses`" in
+			on|yes|True)
+				if [ -e ${workdir}/mail-to-owners-bosses ] ; then
+				    case "${owner}" in
+					"") ;;
+					*) mailto="${mailto} `/opt/Palm/za-manager-lookup/bin/za-manager-lookup ${owner}`" ;;
+				    esac
+				fi
+				;;
+			*) ;;
+		    esac
+		    ;;
+	    *) ;;
+	esac
+	;;
+esac
+
+echo `date ${logfmt}` $0 pid=$$ ${todo} ${status} >> ${channellogfile}
+
+hostname=`hostname`
+(echo ; echo Report from post commit checker https://${hostname}.palm.com: ; \
+	echo ; echo Based on code from: ${svnloc}; \
+    echo ; echo Component: ${todo} ; \
+    echo ; echo Status: ${status} ; \
+    case "${status}" in \
+    skipped) \
+        echo ; \
+        echo "The status of \"skipped\" means that the post commit checker" ; \
+        echo "considered this component and intentionally elected not to" ; \
+        echo "check it at this time.  Components in the \"none\" category" ; \
+        echo "are skipped." ; \
+        echo ; \
+        ;; \
+    notargetarch) \
+        echo ; \
+        echo "The status of \"notargetarch\" means that the post commit checker" ; \
+        echo "could not find any supported target that used your component on that" ; \
+        echo "branch. If your component is not used, you should take one of" ; \
+        echo "two actions:" ; \
+        echo ; \
+        echo "    - If it's legitimately not used and not planned to be used," ; \
+        echo "      you should remove it from the BOM entirely." ; \
+        echo "    - If it's in transition, either on its way in or out," ; \
+        echo "      then you should move it to the \"none\" image temporarily" ; \
+        echo "      before moving it on to it's next destination." ; \
+        echo ; \
+        ;; \
+    *) echo ; echo Full Log: https://${hostname}.palm.com/za-php-utils/cat?file=${workdir}/attempts/${todo}/loglast; \
+    echo ; echo Log Tail: ; \
+    tail -50 ${tododir}/loglast-new ;; \
+    esac) \
+    | mail -s "post commit checker `hostname` ${status} ${todo}" ${mailto}
+
+mv ${tododir}/loglast-new ${tododir}/loglast
+
+echo ${status} > ${tododir}/status-new
+mv ${tododir}/status-new ${tododir}/status
+
+date ${logfmt} > ${tododir}/last-new
+mv ${tododir}/last-new ${tododir}/last
+
+case "${status}" in
+built|skipped)
+	cp ${tododir}/loglast ${tododir}/logsuccess-new
+	mv ${tododir}/logsuccess-new ${tododir}/logsuccess
+	;;
+failed)
+	rm -rf ${tododir}/oe-failure
+	mv oe ${tododir}/oe-failure
+	;;
+esac
+
+rm -f ${tododir}/new ${tododir}/bumped
+${zapostgen} -U component:${todo} -v ${loglevel} -F ${channellogfile}
+${zapostgen} -U channel:${channel} -v ${loglevel} -F ${logfile} >> ${logfile}
+
+done_time=`date ${timingfmt}`
+echo ${done_time} done >> ${timings}
+
+(flock -x 8; echo `date ${logfmt}` `date ${timingfmt}` ${todo} ${status} ${start_time} ${reap_time} ${co_time} ${skipped_time} ${notargetarch_time} ${targetarch_time} ${built_time} ${done_time} >> ${statlog}) 8>> ${statlog}
+
+
+case "${loopcount}" in
+    0)
+        echo `date ${logfmt}` ${logname} pid=$$ Recurring... >> ${logfile}
+	exec $0 ${args}
+	;;
+
+    1)
+        echo `date ${logfmt}` ${logname} pid=$$ exiting after loop count exhausted >> ${logfile}
+        ${zapostgen} -U component:${todo} -v ${loglevel} -F ${channellogfile}
+	${zapostgen} -U channel:${channel} -v ${loglevel} -F ${logfile} >> ${logfile}
+	exit 0
+	;;
+
+    *)
+	loopcount=$((loopcount - 1))
+	echo `date ${logfmt}` ${logname} pid=$$ recurring: ${loopcount} loop counts remain >> ${logfile}
+	exec $0 $args -c ${loopcount}
+	;;
+esac
+
+exit 1

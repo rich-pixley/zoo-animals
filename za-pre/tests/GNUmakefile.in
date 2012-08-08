@@ -1,0 +1,91 @@
+#!/usr/bin/make -f
+# Time-stamp: <19-Jun-2012 11:33:24 PDT by rich.pixley@palm.com>
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#python := /Library/Frameworks/Python.framework/Versions/2.7/bin/python -3
+python := python3
+#python := /usr/local/bin/python3
+
+srcdir := @srcdir@
+
+worker := $(python) $(srcdir)/../WorkQueue.py --database test
+speculator := $(python) $(srcdir)/../Speculator.py
+
+.PHONY: all
+all: check-workqueue # check-speculator
+
+.PHONY: check-workqueue
+check-workqueue:
+	rm -f test.db
+	$(worker) --help
+	$(worker) --init
+	$(worker) --just-keys
+	[ -z "`$(worker) --just-keys`" ]
+	$(worker) --priority-incremental --just-keys 
+	$(worker) --delete `$(worker) --just-keys -c 1` --just-keys
+	[ -z "`$(worker) --just-keys`" ]
+	$(worker) --force-full --just-keys 
+	$(worker) --force-incremental --just-keys 
+	$(worker) --priority-full --just-keys 
+	[ "`$(worker) --print-count`" -eq 3 ]
+	$(worker) --dump
+	for i in 1 2 3; do $(worker) --delete `$(worker) --just-keys -c 1` ; done
+	[ -z "`$(worker) --just-keys`" ]
+	$(worker) --submission $(srcdir)/test1 --dump
+	[ "`$(worker) --print-requester \`$(worker) --just-keys -c 1\``" == 'Rich Pixley <Rich.Pixley@palm.com>' ]
+	[ "`$(worker) --print-submission \`$(worker) --just-keys -c 1\``" == "palmbuildinfo=1 richfake+none richfake2=1" ]
+	[ "`$(worker) --print-validation \`$(worker) --just-keys -c 1\``" == "False" ]
+	$(worker) --delete `$(worker) --just-keys -c 1` --just-keys
+	$(worker) --submission - --dump < $(srcdir)/test2
+	$(worker) --delete `$(worker) --just-keys -c 1` --just-keys
+	$(worker) --submission $(srcdir)/test3 --dump
+	[ "`$(worker) --print-releasenotes \`$(worker) --just-keys -c 1\``" == "`cat $(srcdir)/gold3`" ]
+	$(worker) --print-releasenotes `$(worker) --just-keys -c 1`
+	$(worker) --delete `$(worker) --just-keys -c 1` --just-keys
+	$(worker) --submission $(srcdir)/test4 --dump
+	$(worker) --delete `$(worker) --just-keys -c 1` --just-keys
+	$(worker) --submission $(srcdir)/test5 --dump -c 1
+	$(worker) --delete `$(worker) --just-keys -c 1` --just-keys
+	[ -z "`$(worker) --just-keys`" ]
+	rm -f test.db
+
+.PHONY: check-speculator
+check-speculator:
+	$(speculator) --help
+
+	cp nova-bom.inc bom-test.inc
+	$(speculator) '<rich.pixley@palm.com>' bom-test.inc new{
+	diff -u test1-gold.inc bom-test.inc
+
+	$(speculator) '<rich.pixley@palm.com>' bom-test.inc new+auxiliary
+	diff -u test2-gold.inc bom-test.inc
+
+	$(speculator) '<rich.pixley@palm.com>' bom-test.inc 'new@lloyd.chang@palm.com'
+	diff -u test3-gold.inc bom-test.inc
+
+	$(speculator) '<rich.pixley@palm.com>' bom-test.inc 'new#2.0'
+	diff -u test4-gold.inc bom-test.inc
+
+	$(speculator) '<rich.pixley@palm.com>' bom-test.inc 'new=2'
+	diff -u test5-gold.inc bom-test.inc
+
+	$(speculator) '<rich.pixley@palm.com>' bom-test.inc 'new}'
+	diff -u nova-bom.inc bom-test.inc
+
+	rm bom-test.inc
+
+.PHONY: clean
+clean:

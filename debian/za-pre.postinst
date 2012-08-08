@@ -1,0 +1,68 @@
+#!/bin/sh
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -x
+set -e
+
+bindir==bindir=
+mylibexecdir==mylibexecdir=
+conftool="${bindir}/ZAconf -s za-pre"
+owner="`${conftool} -k owner`"
+workdir="`${conftool} -k workdir`"
+
+fqdn=`hostname --fqdn`
+
+for i ; do
+    case "$i" in
+	configure)
+		adduser --system ${owner}
+
+		# set aliases
+		target=/etc/aliases
+		if [ ! -e ${target}-orig ] ; then
+		    cp ${target} ${target}-orig
+		fi
+		(sed -e '/automatically by za-pre/,/end of za-pre/d' \
+		    < ${target} ; \
+		    cat /opt/Palm/za-pre${target}) \
+		    > ${target}-new
+		mv ${target}-new ${target}
+		newaliases
+
+		# set sudos
+		target=/etc/sudoers
+		if [ ! -e ${target}-orig ] ; then
+		    cp ${target} ${target}-orig
+		fi
+		(sed -e '/automatically by za-pre/,/end of za-pre/d' \
+		    < ${target} ; \
+		    cat /opt/Palm/za-pre${target}) \
+		    > ${target}-new
+		chmod 0440 ${target}-new
+		mv ${target}-new ${target}
+
+		# create queue if necessary. note: I can't find a way
+		# to test for the existence of a directory in
+		# subversion.  So just try to make it and ignore
+		# errors.  This will be bad if the directory can't be
+		# created for some other reason.
+
+		[ -e ${workdir}/work.db ] || su --shell /bin/sh -c "${mylibexecdir}/WorkQueue --logname ${owner} --init" ${owner}
+		;;
+    esac
+done
+
+#DEBHELPER#

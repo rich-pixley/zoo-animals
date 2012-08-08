@@ -1,0 +1,238 @@
+#!/usr/bin/make -f
+# Time-stamp: <19-Jun-2012 11:08:02 PDT by rich.pixley@palm.com>
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+srcdir := @srcdir@
+
+#python := /Library/Frameworks/Python.framework/Versions/2.7/bin/python -3
+python := python -3
+python3 := python3
+
+localsocket := `pwd`/zadc-testing
+
+genverbose := -x -v debug -F gen.log
+gen := $(python) $(srcdir)/../ZApostgen.py -X $(localsocket) #$(genverbose)
+
+dverbose := -x -v debug -F d.log
+d := $(python) $(srcdir)/../../za-postd/ZApostd.py -X $(localsocket) \
+	--workdir=`pwd`/workdir \
+	--svnloc=http://subversion.palm.com/main/nova/oe/trunk \
+	--bomfile=./nova-bom.inc #$(dverbose)
+
+conftool := $(python3) $(srcdir)/../../za-conf/ZAconf.py
+confarg :=  --config sample.conf
+
+all: check
+
+check: check-conftool check-locks check-zapostd-local check-zapostd-remote
+
+.PHONY: check-conftool
+check-conftool:
+	cp $(srcdir)/sample.conf .
+	$(conftool) $(confarg) --help
+	$(conftool) $(confarg) | diff -u $(srcdir)/sections -
+	$(conftool) $(confarg) -s DEFAULT | diff -u $(srcdir)/DEFAULT -
+	$(conftool) $(confarg) -s First | diff -u $(srcdir)/First -
+	$(conftool) $(confarg) -s za-post | diff -u $(srcdir)/za-post -
+	$(conftool) $(confarg) -s DEFAULT -k x | diff -u $(srcdir)/x -
+	$(conftool) $(confarg) -s DEFAULT -k y | diff -u $(srcdir)/y -
+	$(conftool) $(confarg) -s DEFAULT -k z | diff -u $(srcdir)/z -
+	$(conftool) $(confarg) -s First -k x | diff -u $(srcdir)/x -
+	$(conftool) $(confarg) -s First -k y | diff -u $(srcdir)/y -
+	$(conftool) $(confarg) -s First -k z | diff -u $(srcdir)/z -
+	$(conftool) $(confarg) -s First -k a | diff -u $(srcdir)/a -
+	$(conftool) $(confarg) -s First -k b | diff -u $(srcdir)/b -
+	$(conftool) $(confarg) -s First -k c | diff -u $(srcdir)/c -
+	$(conftool) $(confarg) -s za-post -k x | diff -u $(srcdir)/x -
+	$(conftool) $(confarg) -s za-post -k y | diff -u $(srcdir)/y -
+	$(conftool) $(confarg) -s za-post -k z | diff -u $(srcdir)/z -
+	$(conftool) $(confarg) -s za-post -k workdir | diff -u $(srcdir)/workdir.out -
+
+	cp sample.conf new.conf
+	$(conftool) --config new.conf -s DEFAULT -k $(srcdir)/x 3
+	$(conftool) --config new.conf -s DEFAULT -k $(srcdir)/x | diff -u $(srcdir)/x2 -
+	rm new.conf
+
+.PHONY: check-locks
+check-locks:
+	rm -f $(localsocket)
+	$(d) &
+
+	sleep 1
+	$(gen) -C
+
+	# nothing locked initially
+	! $(gen) -T foo
+
+	$(gen) -L foo -U foo
+
+	# nothing locked initially
+	! $(gen) -T foo
+
+	# lock, test, unlock, test
+	$(gen) -p 12345 -L foo
+	$(gen) -T foo
+	$(gen) -p 12345 -U foo
+	! $(gen) -T foo
+
+	# verify two not locked, lock, test
+	! $(gen) -T foo
+	! $(gen) -T bar
+	$(gen) -p 12345 -L foo -L bar
+	$(gen) -T foo -T bar
+
+	# unlock first, relock second, verify
+	$(gen) -p 12345 -U foo
+	$(gen) -p 12345 -L bar
+	! $(gen) -T foo
+	$(gen) -T bar
+
+	# relock first, verify
+	$(gen) -p 12345 -L foo
+	$(gen) -T foo
+	$(gen) -T bar
+
+	# relock first, verify
+	$(gen) -p 12345 -L foo
+	$(gen) -T foo
+	$(gen) -T bar
+
+	# unlock second, verify
+	$(gen) -p 12345 -U bar
+	$(gen) -T foo
+	! $(gen) -T bar
+
+	# unlock first too, then verify
+	$(gen) -p 12345 -U foo
+	! $(gen) -T foo
+	! $(gen) -T bar
+
+	# unlock first again, (should be redundant), then verify that
+	# we're empty
+	$(gen) -p 12345 -U foo
+	! $(gen) -T foo
+	! $(gen) -T bar
+	$(gen) -S | diff -u /dev/null -
+
+	# lock as a nonexistent pid, then as us, since it doesn't
+	# exist, the lock should be stolen.
+	$(gen) -L foo -p 1963
+	$(gen) -T foo
+	# then try to steal the lock back, but since we're still alive, this should fail.
+	# unlock as us
+	sleep 10 & $(gen) -p $$! -L foo \
+		&& $(gen) -T foo \
+		&& ! $(gen) -L foo -p 1963 \
+		&& $(gen) -T foo \
+		&& $(gen) -p $$! -U foo
+	! $(gen) -T foo
+	$(gen) -Q
+
+.PHONY: clean
+clean:; rm -rf attempts component.locks *-shellout *.log workdir svnroot
+
+.PHONY: check-zapostd-local
+check-zapostd-local:
+	rm -rf $(localsocket) result workdir svnroot
+	tar xfj $(srcdir)/svnroot.tbz
+
+	# a request
+	$(d) --svnloc=file://`pwd`/svnroot/001 --workdir=`pwd`/workdir -n 3 zlib > result
+	echo zlib | diff -u - result
+	rm -rf result workdir
+
+	# additions
+	$(d) --svnloc=file://`pwd`/svnroot/002 --workdir=`pwd`/workdir -n 3 > result
+	(echo alsa-lib; echo audiod; echo zlib) | diff -u - result
+
+	# regular
+	for i in workdir/attempts/*/new; do (set -x ; mv $$i `dirname $$i`/status) ; done
+	sleep 1 && touch workdir/attempts/audiod/status
+	sleep 1 && touch workdir/attempts/alsa-lib/status
+	$(d) --svnloc=file://`pwd`/svnroot/002 --workdir=`pwd`/workdir -n 3 > result
+	(echo zlib; echo audiod; echo alsa-lib; ) | diff -u - result
+
+	# bump
+	sleep 1 && touch workdir/attempts/audiod/bumped
+	$(d) --svnloc=file://`pwd`/svnroot/002 --workdir=`pwd`/workdir -n 3 > result
+	(echo audiod; echo zlib; echo alsa-lib; ) | diff -u - result
+	rm -rf result workdir/oe
+
+	# removal
+	$(d) --svnloc=file://`pwd`/svnroot/003 --workdir=`pwd`/workdir -n 3 > result
+	(echo audiod; echo alsa-lib; ) | diff -u - result
+
+check-zapostd-001:
+	rm -rf $(localsocket) result workdir svnroot
+	tar xfj svnroot.tbz
+
+	# a request
+	$(d) --svnloc=file://`pwd`/svnroot/001 --workdir=`pwd`/workdir &
+	sleep 1
+	$(gen) --workdir=`pwd`/workdir zlib > result
+	echo zlib | diff -u - result
+	rm -rf result workdir
+	$(gen) -Q
+
+check-zapostd-002.1:
+	rm -rf $(localsocket) result workdir svnroot
+	tar xfj svnroot.tbz
+
+	# additions
+	$(d) --svnloc=file://`pwd`/svnroot/002 --workdir=`pwd`/workdir &
+	sleep 1
+	sleep 5 & $(gen) --workdir=`pwd`/workdir -c 1 -p $$! > result
+	sleep 5 & $(gen) --workdir=`pwd`/workdir -c 1 -p $$! >> result
+	sleep 5 & $(gen) --workdir=`pwd`/workdir -c 1 -p $$! >> result
+	(echo alsa-lib; echo audiod; echo zlib) | diff -u - result
+	$(gen) --workdir=`pwd`/workdir -Q
+
+check-zapostd-002.2: check-zapostd-002.1
+	# regular
+	for i in workdir/attempts/*/new; do (set -x ; mv $$i `dirname $$i`/status) ; done
+	sleep 1 && touch workdir/attempts/audiod/status
+	sleep 1 && touch workdir/attempts/alsa-lib/status
+	rm -rf $(localsocket)
+	$(d) --svnloc=file://`pwd`/svnroot/002 --workdir=`pwd`/workdir &
+	sleep 1
+	$(gen) --workdir=`pwd`/workdir -c 3 > result
+	(echo zlib; echo audiod; echo alsa-lib; ) | diff -u - result
+	$(gen) --workdir=`pwd`/workdir -Q
+
+check-zapostd-002: check-zapostd-002.2
+	# bump
+	sleep 1 && touch workdir/attempts/audiod/bumped
+	rm -rf $(localsocket)
+	$(d) --svnloc=file://`pwd`/svnroot/002 --workdir=`pwd`/workdir &
+	sleep 1
+	$(gen) --workdir=`pwd`/workdir -c 3 > result
+	(echo audiod; echo zlib; echo alsa-lib; ) | diff -u - result
+	$(gen) --workdir=`pwd`/workdir -Q
+	rm -rf result workdir/oe
+
+check-zapostd-remote: check-zapostd-002
+	# removal
+	rm -rf $(localsocket)
+	$(d) --svnloc=file://`pwd`/svnroot/003 --workdir=`pwd`/workdir &
+	sleep 1
+	$(gen) --workdir=`pwd`/workdir -c 3 > result
+	(echo audiod; echo alsa-lib; ) | diff -u - result
+	$(gen) --workdir=`pwd`/workdir -Q
+	rm -rf result workdir/oe
+
+# removals
+
+# /Library/Frameworks/Python.framework/Versions/2.7/bin/python -m pdb ../ZApostd.py -X /Users/rich/projects/za-packages/za-dependency-checker/tests/zadc-testing -x -v debug -F d.log  --svnloc=file:///Users/rich/projects/za-packages/za-dependency-checker/tests/svnroot/001 --workdir=/Users/rich/projects/za-packages/za-dependency-checker/tests/workdir

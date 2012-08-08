@@ -1,0 +1,1013 @@
+#!/bin/bash
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+startstamp=`date +%s.%N`
+
+#set -x
+set -e
+
+umask 022
+
+# FIXME: there may be optimizations available with regards to allowing
+# snapshot removal to occur in the background.
+
+# FIXME: output from btrfs is currently going to terminal... which is
+# convenient for testing just now.
+
+bindir==bindir=
+mylibexecdir==mylibexecdir=
+
+conftool="${bindir}/ZAconf -s za-pre"
+
+# FIXME: I can't think of a way to call this only once and also trap
+# nonzero exit code and return values.
+if ${conftool} -k hookscript > /dev/null 2>&1 ; then
+    :
+else
+    echo Hookscript key not found. 1>&2
+    exit 1
+fi
+
+hookscript="`${conftool} -k hookscript`"
+
+if (${hookscript} name) > /dev/null ; then
+    :
+else
+    echo Hookscript \"${hookscript}\" fails. 1>&2
+    exit 1
+fi
+
+owner="`${conftool} -k owner`"
+fsmountpoint="`${conftool} -k fsmountpoint`"
+workdir="`${conftool} -k workdir`"
+
+pusheddir=`pwd`
+
+hostname=`hostname`
+domainname=`dnsdomainname`
+fqdn=`hostname --fqdn`
+
+buildingrevfile=${workdir}/building-rev
+disableapplicationfile=${workdir}/disable-application
+disablefile=${workdir}/disable
+failingfile=${workdir}/FAILING
+forcefullfile=${workdir}/force-full
+forceincrementalfile=${workdir}/force-incremental
+hookscriptsigfile=${workdir}/hookscriptsig
+lastbuilt=${workdir}/last-built
+lastcompletedfile=${workdir}/last-completed
+lastfull=${workdir}/last-full
+lasthookscriptfile=${workdir}/last-hookscript
+lastpassfile=${workdir}/last-pass
+lastsucceededfile=${workdir}/last-succeeded
+lockfile=${workdir}/LOCK
+logfile=${workdir}/checkloop.log
+logfmt="+%Y-%m-%dT%H:%M:%S"
+logname=`basename $0`
+loopcount=0
+mailfailuresfile=${workdir}/mailfailures
+mailheaderfile=/dev/null
+mailsuccessesfile=${workdir}/mailsuccesses
+passesdir=${workdir}/passes
+pidfile=${workdir}/checkloop.pid
+priorityfullfile=${workdir}/priority-full
+priorityincrementalfile=${workdir}/priority-incremental
+results=${workdir}/results
+speculator=${mylibexecdir}/Speculator
+ssmnt=${workdir}/mnt
+statsdir=${workdir}/stats
+topoftreefile=${workdir}/top-of-tree
+workqueue=${mylibexecdir}/WorkQueue
+
+workdir2=${ssmnt}`echo ${workdir} | sed -e "s:${fsmountpoint}::"`
+builddir=${workdir2}/oe
+ownersfile=${workdir2}/owners
+
+if [ -e ${mailsuccessesfile} ] ; then
+    mailsuccesses="`cat ${mailsuccessesfile}`"
+else
+    mailsuccesses=${owner}
+fi
+
+if [ -e ${mailfailuresfile} ] ; then
+    mailfailures="`cat ${mailfailuresfile}`"
+else
+    mailfailures=${owner}
+fi
+
+errMsgChecker() {
+    case "${logfile}" in
+	/dev/tty) ;;
+	*)
+	    # Checker internal error
+	    # Notify mailfailure distribution list with
+	    # last few line of checker log checkloop.log  
+	    (echo ; \
+	    echo "NOTICE - checker internal failure" ; \
+	    echo ;  \
+	    echo ; echo "Report from submission checker https://${fqdn}:" ; \
+	    echo ; echo "Status: checker internal failure" ; \
+	    echo ; echo "Source URL: ${srcuri}" ; \
+	    echo ; echo "Checker log: https://${fqdn}/za-php-utils/cat?file=${logfile}" ; \
+	    echo ; echo "Wiki Doc: http://wiki.palm.com/display/Nova/Nova+Submission+Checker" ; \
+	    echo ; echo "Checker log snippet: " ; \
+	    tail -10 ${logfile} ) \
+	    | mail -s "submission checker ${fqdn} checker-build-failure" ${mailfailures}
+	    ;;
+    esac
+}
+
+buildtype=undetermined
+
+enable=
+
+### disable trick - if the file exists, exit immediately, unless we
+### have any arguments.  This let's me disable any incoming build
+### requests while still being able to work.
+args=""
+nextarg=
+for i ; do
+    case "$nextarg" in
+	revision)
+	    r=$i
+	    revision_forced=yes
+	    nextarg=
+	    continue
+	    args="${args} $i"
+	    ;;
+
+	count)
+	    loopcount=$i
+	    nextarg=
+	    continue
+	    ;;
+
+	"") ;;
+    esac
+
+    case "$i" in
+	-c)
+	    nextarg=count
+	    ;;
+	-e)
+	    enable=yes
+	    args="${args} $i"
+	    ;;
+	-f)
+	    buildtype=full
+	    args="${args} $i"
+	    ;;
+	-R)
+	    [ ! -d ${ssmnt} ] || sudo umount ${ssmnt} > /dev/null 2>&1 || /bin/true
+	    for i in ${fsmountpoint}/${LOGNAME}-* ; do
+		    [ ! -d $i ] || sudo /sbin/btrfs subvolume delete $i > /dev/null 2>&1
+	    done
+	    rm -rf ${passesdir} ${workdir}/last*
+	    exit 0
+	    ;;
+	-r)
+	    nextarg=revision
+	    args="${args} $i"
+	    ;;
+	-t)
+	    logfile=/dev/tty
+	    args="${args} $i"
+	    ;;
+	-x)
+	    set -x
+	    args="${args} $i"
+	    ;;
+	*)
+    	    echo `date ${logfmt}` ${logname} pid=$$ Unrecognized Option: $i >> ${logfile}
+	    errMsgChecker
+	    exit 1
+	    ;;
+    esac
+done
+
+case "${enable}" in
+    yes) ;;
+
+    *)
+    	if [ -e ${disablefile} -o -e ${disableapplicationfile} ] ; then
+	    exit 0
+	fi
+	;;
+esac
+
+pushargs="$*"
+
+if (mount | grep " ${fsmountpoint} ") > /dev/null 2>&1 ; then
+    mountstuff=`mount | grep " ${fsmountpoint} "`
+else
+    echo `date ${logfmt}` ${logname} pid=$$ mountpoint ${fsmountpoint} not found >> ${logfile}
+    exit 1
+fi
+
+set ${mountstuff}
+[ $3 = "${fsmountpoint}" ]
+[ $5 = "btrfs" ]
+fsdevice=$1
+set " ${pushargs}"
+
+foundfile=/tmp/found-$$
+
+### mark us as running
+
+### Note that this is an atomic action.  Either we will write the
+### file, or we will error out attempting to write the file.  Either
+### is fine.  However, if the lock does exist, double check that the
+### process still does too.  If not, then remove the lock file and
+### start over.
+
+echo `date ${logfmt}` ${logname} pid=$$ hookscript=${hookscript} >> ${logfile}
+echo `date ${logfmt}` ${logname} pid=$$ looking to lock ${lockfile} >> ${logfile}
+
+tapewormhead=false
+if (umask 0777 && echo $$ > ${lockfile}) > /dev/null 2>&1 ; then
+    echo $$ > ${pidfile}
+    echo `date ${logfmt}` ${logname} pid=$$ acquired ${lockfile} >> ${logfile}
+    tapewormhead=true
+else
+    if [ -r ${pidfile} ] ; then
+	:
+    else
+	echo `date ${logfmt}` ${logname} pid=$$ removing stale lock and recurring >> ${logfile}
+	rm -f ${lockfile}
+	exec $0 $*
+    fi
+	
+    p=`cat ${pidfile}`
+
+    case "$p" in
+        $$) echo `date ${logfmt}` ${logname} pid=$$ lock exists and it is mine >> ${logfile} ;;
+	*) 
+	ps ux | awk "\$2 == $p" > ${foundfile}
+	if [ -s ${foundfile} ] ; then
+	    echo `date ${logfmt}` ${logname} pid=$$ lock in use and another process is running >> ${logfile}
+	    exit 0
+	else
+	    echo `date ${logfmt}` ${logname} pid=$$ removing stale lock and recurring >> ${logfile}
+	    rm -f ${lockfile}
+	    exec $0 $*
+	fi
+	;;
+    esac
+fi
+
+### if we get this far, then we got the lock.  Time to set our priorities.
+renice 5 $$ > /dev/null 2>&1
+
+[ -d ${workdir} ] || mkdir -p ${workdir}
+cd ${workdir}
+
+passname=`date +%FT%H%M%S.%N%z`
+passdir=${passesdir}/${passname}
+
+passbasisfile=${passdir}/basis
+passlogfile=${passdir}/log
+passnotesfile=${passdir}/notes
+passrequesterfile=${passdir}/requester
+passrequestfile=${passdir}/request
+passrevisionfile=${passdir}/revision
+passstatusfile=${passdir}/status
+passsubmissionfile=${passdir}/submission
+passvalidationfile=${passdir}/validation
+
+mkdir -p ${passdir}
+
+timingsfile=${passdir}/timings
+[ -r ${timingsfile} ] || echo ${startstamp} start > ${timingsfile}
+
+### Decide what to do.  This could be:
+### * clear some space, (if we have less than lowwater available)
+### * a full - snapshot from ${fsmountpoint}, co, (build = mcf, bitbake)
+### * an incremental - snapshot from last-succeeded, up, (build = mcf, bitbake)
+### * a speculative - snapshot from last-succeeded, (no co), speculate, (build = mcf, bitbake)
+
+### Here's the priority:
+### * make sure we have at least lowwater free space available
+### * priority fulls, (includes all-full-builds, and missing last-succeeded)
+### * priority incremental,
+### * incrementals, until top of tree or "force-incremental".
+### * speculatives, (if our last success is top of tree, (this may need to change))
+### * fulls, (by force-full request)
+
+### Working through the priority files covers us in the case where we
+### might be interrupted after writing topoftreefile but before we've
+### completed a build.
+
+totp=undetermined
+
+if [ -e ${topoftreefile} ] ; then
+    if [ -e "${lasthookscriptfile}" ] ; then
+	lasthookscript="`cat ${lasthookscriptfile}`"
+	if [ "${lasthookscript}" != "${hookscript}" ] ; then
+	    echo hookscript changed from ${lasthookscript} to ${hookscript} > ${priorityfullfile}
+	fi
+    fi
+
+    if [ -e "${hookscriptsigfile}" ] ; then
+	if sha512sum -c ${hookscriptsigfile} --status ; then
+	    : same
+	else
+	    echo hookscript ${hookscript} changed > ${priorityfullfile}
+	    sha512sum ${hookscript} > ${hookscriptsigfile}
+	fi
+    else
+	sha512sum ${hookscript} > ${hookscriptsigfile}
+    fi
+
+fi
+
+echo ${hookscript} > ${lasthookscriptfile}
+
+topoftree=`${hookscript} topoftree`
+echo ${topoftree} > ${topoftreefile}
+revision=${topoftree}
+
+if [ -e ${lastpassfile} ] ; then
+    lastpassrevision=`cat ${lastpassfile}`
+
+    if [ "${lastpassrevision}" == "${topoftree}" ]; then
+	totp=true
+    else
+	totp=false
+    fi
+fi
+
+lowwater=`${conftool} -k low-water`
+highwater=`${conftool} -k high-water`
+daystokeepstats=`${conftool} -k days-to-keep-stats`
+
+why=dunno
+freespace=`df . | awk '/^\// { print $4; }'`
+if [ ${freespace} -lt "${lowwater}" ] ; then
+    buildtype=lowwater
+    why="under low water (${freespace}/${lowwater})"
+    watermark=${lowwater}
+
+elif [ -e ${priorityfullfile} ] ; then
+    buildtype=full
+    if [ -s ${priorityfullfile} ] ; then
+	why=`cat ${priorityfullfile}`
+    else
+	why="priority full"
+    fi
+
+elif [ ! -e ${lastpassfile} -o ! -e ${lastsucceededfile} ] ; then
+    buildtype=full
+
+    if [ -e ${lastpassfile} ] ; then
+	case "${totp}" in
+	    false) why="new revision may fix top of tree" ;;
+
+	    true)
+	        if [ "`${conftool} -k back-to-back`" == "True" ] ; then
+	    	    echo `date ${logfmt}` ${logname} pid=$$ top of tree, ${topoftree}, has already failed but back-to-back. >> ${logfile}
+		    why="top of tree failing, back-to-back, no prior success"
+		else
+	    	    echo `date ${logfmt}` ${logname} pid=$$ exiting: top of tree, ${topoftree}, has already failed. >> ${logfile}
+		    buildtype=no
+		fi
+		;;
+
+	    *)
+	    	echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} unrecognized totp=\"${totp}\" >> ${logfile}
+		errMsgChecker
+		exit 1
+		;;
+	esac
+    else
+	why="no prior success"
+    fi
+
+elif [ -e ${priorityincrementalfile} ] ; then
+    buildtype=incremental
+
+    if [ -s ${priorityincrementalfile} ] ; then
+	why=`cat ${priorityincrementalfile}`
+    else
+	why="priority incremental"
+    fi
+
+else
+    lastsucceededrevisionfile=${passesdir}/`cat ${lastsucceededfile}`/revision
+    if [ ! -e ${lastsucceededrevisionfile} ]; then
+       # shouldn't be last succeeded without one
+       echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} missing file "${lastsucceededrevisionfile}" >> ${logfile}
+       errMsgChecker
+       exit 1
+    fi
+    lastsucceededrevision=`cat ${lastsucceededrevisionfile}`
+
+    case "${totp}" in
+	false)
+	    buildtype=incremental
+	    why="not top of tree @${lastsucceededrevision}/${topoftree}"
+	    ;;
+
+	true)
+	    why="top of tree @${topoftree}"
+
+	    if [ "${lastsucceededrevision}" != "${topoftree}" ] ; then # top of tree and failing
+		if [ ! -e ${failingfile} ]; then 
+		   # assert
+		   echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} missing file "${failingfile}" >> ${logfile}
+		   errMsgChecker
+		   exit 1
+		fi
+
+	    	echo `date ${logfmt}` ${logname} pid=$$ ${why} has already failed. >> ${logfile}
+		buildtype=no
+
+	    else # top of tree and successful
+		if [ -e ${failingfile} ]; then
+		   # assert
+		   echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} unknown error: top of tree build succeeds but "${failingfile}" exists >> ${logfile}
+		   errMsgChecker
+		   exit 1
+		fi
+
+		if [ "`${conftool} -k changes-blocked`" != "True" -o "`${conftool} -k validations-blocked`" != "True" ] ; then
+		    # if we have any requests
+		    requestname=`${workqueue} --just-keys -c 1` 
+
+		    if [ -n "${requestname}" ] ; then # top of tree, outstanding requests
+			buildtype=speculative
+			why="${why}, outstanding requests"
+
+		    else # top of tree, no outstanding requests
+			buildtype=no
+			why="${why}, no outstanding requests"
+		    fi
+
+		else # top of tree, not processing requests
+		    buildtype=no
+		    why="${why}, changes-blocked, validations-blocked"
+		fi
+	    fi
+	    ;;
+
+	*)
+    	    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} unrecognized totp=\"${totp}\" >> ${logfile}
+	    errMsgChecker
+	    exit 1
+	    ;;
+    esac
+
+    case "${buildtype}" in
+	undetermined|no)
+	    if [ -e ${forcefullfile} ] ; then
+		buildtype=full
+		why="${why}, force-full"
+
+	    elif [ -e ${forceincrementalfile} ] ; then
+		buildtype=incremental
+		why="${why}, force-incremental"
+
+	    elif [ ${freespace} -lt "${highwater}" ] ; then
+		buildtype=highwater
+		why="${why}, under high water (${freespace}/${highwater})"
+		watermark=${highwater}
+	    fi
+    esac
+
+    if [ "${buildtype}" == "no" -a "`${conftool} -k back-to-back`" == "True" ] ; then # build anyway
+	buildtype=incremental
+	why="${why}, back-to-back"
+    fi
+
+    if [ "${buildtype}" == "incremental" -a "`${conftool} -k all-full-builds`" == "True" ] ; then
+	buildtype=full
+	why="${why}, all-full-builds"
+    fi
+fi
+
+case "${buildtype}" in
+    undetermined)
+        echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} exiting: ${buildtype} build type, \(${why}\), of ${revision} \
+	    >> ${logfile}
+	errMsgChecker
+	exit 1
+	;;
+
+    no)
+        rm -rf ${passdir}
+        echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} exiting: ${why} >> ${logfile}
+	exec rm -f ${lockfile} ${pidfile}
+	exit 0
+	;;
+esac
+
+echo `date +%s.%N` ${buildtype} > ${timingsfile}
+
+case "${buildtype}" in
+lowwater|highwater)
+    echo > ${passrevisionfile}
+    ;;
+*)
+    echo ${revision} > ${passrevisionfile}
+    # FIXME: build specific parameters like configargs and makeargs
+    # need to be recorded here.
+    ;;
+esac
+
+### mark incomplete builds as interrupted
+case "${tapewormhead}" in
+true)
+    echo marking interruptions... > ${passstatusfile}
+    for i in ${passesdir}/*/status ; do
+	case "`cat $i`" in
+	    built*|failed*|committed*|redundant*|cleared*) ;;
+	    *) echo interrupted > $i ;;
+	esac
+    done
+    for i in ${passesdir}/* ; do
+	if [ ! -e $i/status ] ; then
+	    echo interrupted > $i/status
+	fi
+    done
+    ;;
+*) ;;
+esac
+
+### disk maintenance
+case "${buildtype}" in
+lowwater|highwater)
+    echo ${buildtype} > ${passdir}/buildtype
+    echo ${requester} > ${passrequesterfile}
+    echo > ${passsubmissionfile}
+    echo "${why}" > ${passnotesfile}
+    echo `date ${logfmt}` ${logname} pid=$$ below ${buildtype} with `df . | awk '/^\// { print $4; }'` of ${watermark} \
+	>> ${logfile}
+
+    [ -d rmme ] || mkdir rmme
+
+    echo clearing space... > ${passstatusfile}
+    sudo umount ${ssmnt} > /dev/null 2>&1 || /bin/true
+
+    rmsnap=
+    candidates=`(cd ${fsmountpoint} && ls)`
+    for candidate in ${candidates} ; do
+	case "${candidate}" in
+	    ${LOGNAME}-*)
+	        base=`echo ${candidate} | sed -e "/${LOGNAME}-/s///"`
+		if [ ! -d ${passesdir}/${base} ] ; then
+		    echo ${base} > ${passbasisfile}
+		    echo `date ${logfmt}` ${logname} pid=$$ removing orphaned snapshot ${candidate} >> ${logfile}
+		    rmsnap="${fsmountpoint}/${candidate}"
+		    break
+		fi
+		;;
+        esac
+    done
+
+    case "${rmsnap}" in
+	"")
+	    x=`ls ${passesdir} | sort -n | head -1`
+
+	    if [ "${x}" == "${passname}" ] ; then
+		echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} Not enough disk space available.  No snapshots to remove.  Disabling myself.  >> ${logfile}
+		touch ${disableapplicationfile}
+		errMsgChecker
+		exit 1
+	    fi
+
+	    if [ -e ${lastsucceededfile} ] ; then
+		case "`cat ${lastsucceededfile}`" in
+		    "$x")
+	    	        rm ${lastsucceededfile} ${lastpassfile}
+			echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} reaped last success. >> ${logfile}
+			echo "reaped last success" > ${priorityfullfile}
+	    		;;
+		esac
+	    fi
+
+	    echo `date ${logfmt}` ${logname} pid=$$ reaping pass $x >> ${logfile}
+
+	    mv ${passesdir}/$x rmme
+
+	    echo $x > ${passbasisfile}
+	    rmsnap=${fsmountpoint}/${LOGNAME}-$x
+	    ;;
+    esac
+
+    if [ -d ${rmsnap} ] ; then
+	echo deleting snapshot... > ${passstatusfile}
+	echo `date ${logfmt}` ${logname} pid=$$ removing snapshot ${rmsnap} >> ${logfile}
+	sudo /sbin/btrfs subvolume delete ${rmsnap} > /dev/null 2>&1
+	echo `date +%s.%N` delete >> ${timingsfile}
+
+	echo reclaiming... > ${passstatusfile}
+	echo `date ${logfmt}` ${logname} pid=$$ reclaiming... >> ${logfile}
+	sudo /sbin/btrfs filesystem reclaim ${fsmountpoint} > /dev/null 2>&1 
+	echo `date +%s.%N` reclaim >> ${timingsfile}
+    else
+	:
+    fi
+
+
+### FIXME: temporarily, do not clear stats.
+    # for i in `find ${passesdir} -maxdepth 2 -name status -mtime +${daystokeepstats}` ; do
+    # 	d=`dirname $i`
+
+    # 	if [ -e $d/full ] ; then
+    # 	    type=full
+    # 	else
+    # 	    type=incremental
+    # 	fi
+
+    # 	rollup=${statsdir}/timings-${type}-`cat $i`
+
+    # 	[ -e ${rollup} ] || touch ${rollup}
+    # 	${mergetimings} ${rollup} $d/timings > ${rollup}-new
+    # 	mv ${rollup}-new ${rollup}
+
+    # 	echo `date ${logfmt}` ${logname} pid=$$ reaping $i '(stats)' >> ${logfile}
+    # 	b=`basename $d`
+    # 	mv $d rmme/stats-$b
+    # done
+
+    echo `date ${logfmt}` ${logname} pid=$$ flushing >> ${logfile}
+    rm -rf rmme
+
+    echo `date +%s.%N` cleared >> ${timingsfile}
+    echo cleared > ${passstatusfile}
+    ;;
+
+*)
+    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} starting ${buildtype} build, \(${why}\), of ${revision} >> ${logfile}
+    echo ${buildtype} > ${passdir}/buildtype
+
+    ssname=${LOGNAME}-${passname}
+    ssdir=${fsmountpoint}/${ssname}
+
+    #buildername=${LOGNAME}
+    buildername=
+
+    ### set up details
+    requester=
+    ;;
+esac
+
+# informational bookkeeping
+case "${buildtype}" in
+    full|incremental|lowwater|highwater)
+	requester=${buildername}
+	echo "${why}" > ${passnotesfile}
+	echo > ${passsubmissionfile}
+	;;
+
+    speculative)
+    	exit 1
+	requester=`${workqueue} --print-requester ${requestname}`
+	${workqueue} --print-submission ${requestname} > ${passsubmissionfile}
+	basename ${requestname} > ${passrequestfile}
+	passvalidation=`${workqueue} --print-validation ${requestname}`
+	echo ${passvalidation} > ${passvalidationfile}
+
+	notes=`${workqueue} --print-releasenotes ${requestname}`
+	case "${notes}" in
+	    "") notes='&nbsp;' ;;
+	esac
+	echo "${notes}" > ${passnotesfile}
+	;;
+
+    no) ;;
+
+    *)
+	echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} unrecognized buildtype=\"${buildtype}\" >> ${logfile}
+	errMsgChecker
+	exit 1
+	;;
+esac
+
+echo ${requester} > ${passrequesterfile}
+
+# snapshot creation
+case "${buildtype}" in
+lowwater|highwater) ;;
+*)
+    ### create and mount snapshot
+    [ ! -d ${ssmnt} ] || sudo umount ${ssmnt} > /dev/null 2>&1 || /bin/true
+    [ -d ${ssmnt} ] || mkdir -p ${ssmnt}
+    ;;
+esac
+
+case "${buildtype}" in
+    full)
+	echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} creating snapshot from ${fsmountpoint} >> ${logfile}
+	sudo /sbin/btrfs subvolume snapshot ${fsmountpoint} ${ssdir} > /dev/null 2>&1
+	echo self > ${passbasisfile}
+	;;
+
+    incremental|speculative)
+	lastsucceeded=`cat ${lastsucceededfile}`
+
+	echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} creating snapshot from `basename ${lastsucceeded}` >> ${logfile}
+
+	sudo /sbin/btrfs subvolume snapshot ${fsmountpoint}/${LOGNAME}-${lastsucceeded} ${ssdir} > /dev/null 2>&1
+	echo ${lastsucceeded} > ${passbasisfile}
+	;;
+esac
+
+case "${buildtype}" in
+    full|incremental|speculative)
+        if sudo mount -t btrfs -o subvol=${ssname} ${fsdevice} ${ssmnt} ; then
+	    :
+	else
+	    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} Cannot mount.  Disabling myself. >> ${logfile}
+	    touch ${disableapplicationfile}
+	    errMsgChecker
+	    exit 1
+	fi
+	cd ${workdir2}
+	;;
+esac
+
+### prepare
+status=failed
+case "${buildtype}" in
+    full|incremental)
+	echo updating... > ${passstatusfile}
+	echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} checking out... >> ${logfile}
+	if (set -x && ${hookscript} co ${topoftree}) >> ${passlogfile} 2>&1 ; then
+	    echo `date +%s.%N` co >> ${timingsfile}
+	else
+	    failure=co
+	    status=disabling
+	    echo `date +%s.%N` cofailed >> ${timingsfile}
+	fi
+	;;
+
+    speculative)
+	exit 1
+	echo speculating... > ${passstatusfile}
+	if ${speculator} ${requester} oe/${bomloc} `cat ${passsubmissionfile}` >> ${passlogfile} 2>&1 ; then
+	    echo `date +%s.%N` speculation >> ${timingsfile}
+	    case "`cd oe && svn st -q`" in
+		"") # if this change doesn't actually do anything, then we don't need to build it.
+		    failure=speculation
+		    status=redundant
+		    ;;
+		*) ;;
+	    esac
+	else
+	    failure=speculation
+	    status=failed
+	    echo `date +%s.%N` speculationfailed >> ${timingsfile}
+	fi
+        ;;
+
+    lowwater|highwater) status=success ;;
+esac
+
+case ${status}/${failure} in
+disabling/*)
+    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} ${failure} failed.  disabling myself. >> ${logfile}
+    touch ${disablefile}
+    rm -f ${lockfile}
+    errMsgChecker
+    exit 1
+    ;;
+*/speculation)
+    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} ${failure} ${status}.  recurring. >> ${logfile}
+    echo ${status} ${failure} > ${passstatusfile}
+    ${workqueue} --delete ${requestname}
+    exec $0 $args
+    ;;
+esac
+
+### build
+case "${buildtype}" in
+    no|lowwater|highwater) ;;
+    *)
+    	builddir=`${hookscript} builddirname`
+        cd ${builddir}
+        echo building... > ${passstatusfile}
+	echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} building... >> ${logfile}
+
+	if (time ${hookscript} build) >> ${passlogfile} 2>&1 ; then
+	    echo `date +%s.%N` built >> ${timingsfile}
+	    status=built
+	else
+	    status=failed
+	    echo `date +%s.%N` buildfailed >> ${timingsfile}
+	fi
+
+	echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} ${status} >> ${logfile}
+	echo ${status} > ${passstatusfile}
+	;;
+esac
+
+### deal with results (the only reason this is separate from building
+### is for timing info).  Email is handled in the next stanza.
+
+suppressemail=true
+case "${buildtype}" in
+    lowwater|highwater) suppressemail=true ;;
+
+    full|incremental)
+	echo ${revision} > ${lastpassfile}-new
+	mv ${lastpassfile}-new ${lastpassfile}
+
+	case "${status}" in
+	    built)
+	        rm -f ${failingfile}
+	        mailto="${mailsuccesses}"
+		echo ${passname} > ${lastsucceededfile}-new
+		mv ${lastsucceededfile}-new ${lastsucceededfile}
+
+		case "${buildtype}" in
+		    full)
+		        rm -f \
+			    ${priorityfullfile} \
+			    ${forcefullfile} \
+			    ${priorityincrementalfile} \
+			    ${forceincrementalfile}
+			;;
+
+		    incremental)
+		        rm -f \
+			    ${priorityincrementalfile} \
+			    ${forceincrementalfile}
+			;;
+
+		    *) exit 1 ;;
+		esac
+		;;
+
+	    failed)
+	        mailto="${mailfailures}"
+		echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} ${buildtype} build failed. >> ${logfile}
+		;;
+	esac
+	;;
+
+    speculative)
+    	exit 1
+	# FIXME: at least owners isn't being handled properly.
+	if [ -e ${ownersfile} ] ; then
+	    owners=`cat ${ownersfile}`
+	    rm ${ownersfile}
+	else
+	    owners=
+	fi
+
+	mailto="${requester} ${owners}"
+        case "${status}" in
+	    built)
+	        mailto="${mailto} ${mailsuccesses}"
+		${workqueue} --print-comment ${requestname} > ../message
+	        if (cd .. && svn update oe/${bomloc} && svn ci -F message --encoding utf-8 oe/${bomloc}) > ${passlogfile}-commit 2>&1 ; then
+		    cat ${passlogfile}-commit >> ${passlogfile}
+
+		    case "${passvalidation}" in
+			True)
+				finaldisposition="built"
+				if ( set -x \
+				    && time make installnew INSTALLDIR=`pwd`/results INSTALLSINCE=${passbasisfile}) \
+				    >> ${passlogfile} 2>&1 ; then
+		    		    :
+				else
+				    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} failed to publish. >> ${logfile}
+				    echo failed publish > ${passstatusfile}
+				    suppressemail=true
+				fi
+				;;
+			*)
+			    awk '$1 == "Committed" && $2 == "revision" { print $3 + 0; }' \
+				< ${passlogfile}-commit \
+				> ${passlogfile}-revision
+
+			    committedrevision=`cat ${passlogfile}-revision`
+			    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} committed revision ${committedrevision}. \
+				>> ${logfile}
+
+			    svn log -q -r${committedrevision}:${revision} > svnlog
+			    sed \
+				-e "/r${committedrevision}/d" \
+				-e "/r${revision}/d" \
+				-e "/-----/d" \
+				< svnlog \
+				> svnlog-guts
+
+			    case "`wc -l < svnlog-guts`" in
+				0)
+				    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} no intervening commits.  marking this build successful. \
+					>> ${logfile}
+
+				    echo ${committedrevision} > ${lastpassfile}-new
+				    mv ${lastpassfile}-new ${lastpassfile}
+
+				    echo ${passname} > ${lastsucceededfile}-new
+				    mv ${lastsucceededfile}-new ${lastsucceededfile}
+
+				    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} changing revision of this build to ${committedrevision}. \
+					>> ${logfile}
+
+				    echo ${committedrevision} > ${passrevisionfile}-new
+				    mv ${passrevisionfile}-new ${passrevisionfile}
+
+				    ;;
+			    esac
+
+			    finaldisposition="committed as r${committedrevision}" ;;
+		    esac
+
+		    echo ${finaldisposition} > ${passstatusfile}
+		else
+		    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} failed to commit. >> ${logfile}
+		    echo failed commit > ${passstatusfile}
+		    suppressemail=true
+		fi
+		;;
+	    failed)
+	        mailto="${mailto} ${mailfailures}"
+		;;
+	esac
+	${workqueue} --delete ${requestname}
+	;;
+esac
+
+case "${suppressemail}" in
+true) ;;
+*)
+    ### email notification
+
+    if [ "${buildtype}" == "no" ] ; then
+	:
+
+    elif [ "${status}" == "built" -o "${buildtype}" == "speculative" ] ; then
+	exit 1
+
+	(echo ; echo Report from submission checker https://${fqdn}: ; \
+	    echo ; echo "Status: ${status}" ; \
+	    echo ; echo "Type: ${buildtype}" ; \
+	    echo ; echo "Source URL: ${svnloc}" ; \
+	    echo ; echo "Submission:" ; \
+	    cat ${passsubmissionfile} ; \
+	    echo ; echo "Notes:" ; \
+	    cat ${passnotesfile} ; \
+	    echo ; echo "Full Log: https://${fqdn}/za-php-utils/cat?file=${passlogfile}" ; \
+	    echo ; echo "Wiki Doc: http://wiki.palm.com/display/Nova/Nova+Submission+Checker" ; \
+	    echo ; echo "Log snippet:" ; \
+	    grep 'ERROR: ' -B1 -A48 ${passlogfile} || tail -50 ${passlogfile}) \
+	    | mail -s "submission checker ${fqdn} ${status} ${passname}" ${mailto}
+
+    elif [ ! -f ${failingfile} ] ; then
+
+	(echo ; \
+	    echo "NOTICE - top of tree is failing to build." ; \
+	    echo ; \
+	    echo ; echo "Report from submission checker https://${fqdn}:" ; \
+	    echo ; echo "Source URL: ${svnloc}" ; \
+	    echo ; echo "Status: ${buildtype} build failure" ; \
+	    echo ; echo "Full Log: https://${fqdn}/za-php-utils/cat?file=${passlogfile}" ; \
+	    echo ; echo "Wiki Doc: http://wiki.palm.com/display/Nova/Nova+Submission+Checker" ; \
+	    echo ; echo "Log snippet:" ; \
+	    grep 'ERROR: ' -B1 -A48 ${passlogfile} || tail -50 ${passlogfile}) \
+	    | mail -s "submission checker ${fqdn} ${buildtype}-build-failure ${passname}" ${mailfailures}
+
+	touch ${failingfile}
+    else
+	: failing, but have already notified
+    fi
+
+    echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} completes >> ${logfile}
+    ;;
+esac
+
+echo `date +%s.%N` done >> ${timingsfile}
+
+case "${loopcount}" in
+    0)
+	echo `date ${logfmt}` ${logname} pid=$$ pass=${passname} Recurring... >> ${logfile}
+	exec $0 $args
+	;;
+
+    1)
+	echo `date ${logfmt}` ${logname} pid=$$ exiting after loop count exhausted >> ${logfile}
+	exec rm -f ${lockfile} ${pidfile}
+	;;
+
+    *)
+	loopcount=$((loopcount - 1))
+	echo `date ${logfmt}` ${logname} pid=$$ recurring: loop count remaining ${loopcount} >> ${logfile}
+	exec $0 $args -c ${loopcount}
+	;;
+esac

@@ -1,0 +1,121 @@
+#!/bin/sh -e
+### BEGIN INIT INFO
+# Provides:          za-post
+# Required-Start:    $remote_fs $syslog $named $network $time $mail-transport-agent za-postd
+# Required-Stop:     $remote_fs $syslog $named $network $time $mail-transport-agent
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Enables the zoo animal post checker and starts instances of the build loop.
+# Description:       Enables the zoo animal post checker and starts instances of the build loop.
+### END INIT INFO
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+bindir==bindir=
+mylibexecdir==mylibexecdir=
+
+BINARY=${mylibexecdir}/za-post-check-loop
+conftool="${bindir}/ZAconf -s za-post"
+workdir=`${conftool} -k workdir`
+BUILDERDIR=${workdir}/builders
+
+test -x ${BINARY} || exit 0
+
+channelcount=`${conftool} -k channels`
+BUILDERS=`python3 -c "print(' '.join(['channel{:0=2}'.format(i) for i in range(${channelcount})]))"`
+
+if [ -r /etc/default/za-post ] ; then
+    . /etc/default/za-post
+fi
+
+# Get lsb functions
+. /lib/lsb/init-functions
+
+if [ ! -d ${workdir} ] ; then
+    /bin/mkdir ${workdir}
+    owner=`${conftool} -k owner`
+    /bin/chown ${owner} ${workdir}
+fi
+
+case "$1" in
+    start)
+        rm -rf ${workdir}/disable
+
+	case "$2" in
+	    "")
+    	    	for i in ${BUILDERS} ; do
+		    $0 start $i
+		done
+		;;
+	    *)
+	        if [ ! -r ${workdir}/disable-application ] ; then
+		    log_begin_msg "Starting za-post ("$2")..."
+		    start-stop-daemon \
+			--signal 9 \
+			--retry 2 \
+			--verbose \
+			--nicelevel 15 \
+			--background \
+			--chdir ${workdir} \
+			--chuid za-post \
+			--start \
+			--oknodo \
+			--startas ${BINARY} \
+			--pidfile ${workdir}/$2.LOCK \
+			--make-pidfile \
+		    	-- -C $2 $OPTIONS
+		    log_end_msg $?
+		fi
+		;;
+	esac
+	;;
+
+    stop)
+    	case "$2" in
+	    "")
+	    	log_begin_msg "Stopping all za-posts..."
+		for i in ${BUILDERS} ; do
+		    $0 stop $i
+		done
+		touch ${workdir}/disable
+	    	;;
+	    *)
+	    	log_begin_msg "Stopping za-post ("$2")..."
+
+		start-stop-daemon \
+ 			--signal 9 \
+			--retry 2 \
+			--verbose \
+			--nicelevel 15 \
+			--stop \
+			--oknodo \
+			--pidfile ${workdir}/$2.LOCK
+
+		log_end_msg $?
+		;;
+	esac
+	;;
+
+    restart|reload|force-reload)
+    	$0 stop $2
+	sleep 1
+	$0 start $2
+	;;
+
+    *)
+    	log_success_msg "Usage: /etc/init.d/za-post {start|stop|restart|reload|force-reload}"
+	exit 1
+	;;
+esac

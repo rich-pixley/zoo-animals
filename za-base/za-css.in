@@ -1,0 +1,218 @@
+/* Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License. */
+
+/* top level */
+
+body {
+	font-family: Arial, Helvetica, sans-serif;
+	color: @white@;
+	background-color: @bodyback@;
+}
+
+table {
+	empty-cells: show;
+	background-color: @tableback@; /* darkish blue */
+}
+
+thead, th {
+	background-color: @tablehead@; /* subtly matched to above */
+}
+
+tr.built, tr.committed, tr.stable, tr.redundant, tr.cleared {
+	background-color: @tableback@; /* darkish blue */
+}
+
+tr.interrupted, tr.failed, td.failed, tr.unstable {
+	background-color: @failed@; /* darkish red */
+}
+
+tr.unknown, tr.testing {
+	background-color: @unknownstatus@; /* matching yellow */
+}
+
+tr.whatever {
+/*	background-color: @darkgreen@; /* matching green */
+/*	background-color: @unknownstatus@; /* matching yellow */
+	background-color: @failed@; /* darkish red */
+}
+
+.help, .help:link, .help:visited, .help:hover, .help:active {
+	color: @help@;
+	text-align: right;
+	width: 100%;
+	text-decoration: none;
+	font-weight: bold;
+}
+
+.spacer {
+	height: 5px;
+	width: 100%;
+	clear: both;
+}
+
+.bigtitle {
+	color: @headerbarhover@;
+	text-align: center;
+	width: 100%;
+	font-weight: bold;
+	font-size: 600%;
+	position: absolute;
+	left: 0;
+	top: 30px;
+	opacity: 0.35;
+	-moz-opacity: 0.35;
+	filter:alpha(opacity=35);
+	z-index: -1;
+}
+
+.headerbar {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: medium;
+	font-style: normal;
+	font-weight: bold;
+	background-color: @nearblack@;
+	opacity: 0.55;
+	-moz-opacity: 0.55;
+	filter:alpha(opacity=55);
+	color: @normal@;
+	float: left;
+	text-align: center;
+	z-index: 2;
+}
+
+/* "normal" */
+.headeritem:link, .headeritem:visited, .headeritem:hover,
+	.headeritem:active, .headeritem-current:link,
+	.headeritem-current:visited, .headeritem-current:hover,
+	.headeritem-current:active, .headeritem-disabled:link,
+	.headeritem-disabled:visited, .headeritem-disabled:hover,
+	.headeritem-disabled:active, .headeritem-failing:link,
+	.headeritem-failing:visited, .headeritem-failing:hover,
+	.headeritem-failing:active, .headeritem-current-disabled:link,
+	.headeritem-current-disabled:visited, .headeritem-current-disabled:hover,
+	.headeritem-current-disabled:active, .headeritem-current-failing:link,
+	.headeritem-current-failing:visited, .headeritem-current-failing:hover,
+	.headeritem-current-failing:active, .headeritem-disabled-failing:link,
+	.headeritem-disabled-failing:visited, .headeritem-disabled-failing:hover,
+	.headeritem-disabled-failing:active {
+	color: @normal@;
+	text-decoration: none;
+}
+
+/* "current" */
+.headeritem-current:link, .headeritem-current:visited, .headeritem-current:active {
+	color: @current@; /* light blue */
+}
+
+/* "disabled" */
+.headeritem-disabled:link, .headeritem-disabled:visited, .headeritem-disabled:active {
+	text-decoration: line-through;
+}
+
+/* "failing" */
+.headeritem-failing:link, .headeritem-failing:visited, .headeritem-failing:active {
+	color: @failing@; /* medium red */
+}
+
+.failing {
+	color: @failing@; /* medium red */
+	font-weight: bold;
+}
+
+/* "current" && "disabled" */
+.headeritem-current-disabled:link, .headeritem-current-disabled:visited, .headeritem-current-disabled:active {
+	color: @current@; /* light blue */
+	text-decoration: line-through;
+}
+
+/* "current" && "failing" */
+.headeritem-current-failing:link, .headeritem-current-failing:visited, .headeritem-current-failing:active {
+	color: @failingcurrent@; /* light red */
+}
+.headeritem-failing:hover, .headeritem-current-failing:hover {
+	color: @failingdisabled@; /* whiter red */
+}
+
+/* "disabled" && "failing" */
+.headeritem-disabled-failing:link, .headeritem-disabled-failing:visited, .headeritem-disabled-failing:active {
+	color: @failing@; /* medium red */
+	text-decoration: line-through;
+}
+.headeritem-disabled-failing:hover {
+	color: @failingdisabled@; /* whiter red */
+	text-decoration: line-through;
+}
+
+/* "current" && "disabled" && "failing" */
+.headeritem-current-disabled-failing:link, .headeritem-current-disabled-failing:visited, .headeritem-current-disabled-failing:active {
+	color: @failingcurrent@; /* light red */
+	text-decoration: line-through;
+}
+.headeritem-current-disabled-failing:hover {
+	color: @failingdisabled@; /* whiter red */
+	text-decoration: line-through;
+}
+
+.headerbar:hover, .headeritem:hover, .headeritem-current:hover,
+	.headeritem-disabled:hover,
+	.headeritem-current-disabled:hover, .help:hover {
+	color: @headerbarhover@; /* whiter blue */
+}
+
+.content, .content-break, .news {
+	float: left;
+	margin: 8px;
+	padding: 4px;
+	border-style: none;
+	border-width: thin;
+}
+
+.news {
+	color: @failingdisabled@; /* whiter red */
+	text-decoration: blink;
+	background-color: @nearblack@;
+	opacity: 0.55;
+	-moz-opacity: 0.55;
+	filter:alpha(opacity=55);
+}
+
+.content-break {
+	clear: both;
+}
+
+a:link, a:visited, a:active {
+	color: @headerbarhover@;
+}
+
+a:hover {
+	color: @help@;
+}
+
+.backgroundbar {
+	opacity: 0.5;
+	-moz-opacity: 0.5;
+	filter:alpha(opacity=50);
+	background-color: @nearblack@;
+	z-index: 2;
+}
+
+.unavailable {
+	text-align: center;
+	font-style: italic;
+}
+
+.tableheader {
+	text-align: center;
+	font-weight: bold;
+}

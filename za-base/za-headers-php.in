@@ -1,0 +1,246 @@
+<!--
+Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you
+may not use this file except in compliance with the License.  You may
+obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied.  See the License for the specific language governing
+permissions and limitations under the License.
+-->
+
+<?php
+
+$hostname = php_uname("n");
+
+#include "/net/nova-builder.palm.com/var/www/za-animals.php";
+$animals = array($hostname);
+
+class app {
+	var $link;
+	var $workdir;
+
+	function app($link, $workdir) {
+		$this->link = $link;
+		$this->workdir = $workdir;
+	}
+}
+
+$bindir = "=bindir=";
+$mylibexecdir = "=mylibexecdir=";
+
+$conftool = "$bindir/ZAconf";
+
+$preworkdir = trim(`$conftool -s za-pre -k workdir`);
+$preowner = trim(`$conftool -s za-pre -k owner`);
+
+$postworkdir = trim(`$conftool -s za-post -k workdir`);
+$postowner = trim(`$conftool -s za-post -k owner`);
+
+$fsmountpoint = trim(`$conftool -s za-pre -k fsmountpoint`);
+
+$apps = array("info" => new app("za-machine-info/index.php", "/none"),
+	"pre-commit checker" => new app("za-pre/index.php", $preworkdir),
+	"post-commit checker" => new app("za-post/index.php", $postworkdir),
+	"machine matrix" => new app("za-machine-matrix/index.php", "/none"));
+
+class headeritem {
+	var $link;
+	var $status;
+
+	function headeritem($link, $status) {
+		$this->link = $link;
+		$this->status = $status;
+	}
+}
+
+function headerbar($baritems) {
+	$retval = "";
+	$retval .= "<div class=\"spacer\">&nbsp;</div>\n";
+	$count = count($baritems);
+
+	$s = 0;
+
+	if ($count > 0) {
+		$s = (integer)(100 / $count);
+		foreach ($baritems as $key => $value) {
+			$retval .= "<div class=\"headerbar\" style=\"width: "
+				. $s
+				. "%\"><a class=\"headeritem";
+
+			if ($value->status != "normal") {
+				$retval .= "-" . $value->status;
+			}
+
+			$retval .= "\"  href=\""
+				. $value->link
+				. "\">"
+				. $key
+				. "</a></div>\n";
+		}
+	}
+
+	$retval .= "<div class=\"headerbar\" style=\"width: "
+		. (100 - ($s * $count))
+		. "%\">&nbsp;</div>\n\n";
+
+	return $retval;
+}
+
+function headers($highlight2, $thirdbar) {
+	global $animals, $apps;
+	$retval = "";
+
+	$retval .= "<div class=\"bigtitle\">zoo animals</div>\n";
+
+	$retval .= "<div class=\"help\">"
+		. "<a class=\"help\" href=\"http://wiki.palm.com/display/Nova/Nova+Continuous+Builders\">help</a>"
+		. "</div>\n";
+
+	$retval .= "<div class=\"help\">"
+		. "<a class=\"help\" href=\"https://wiki.palm.com/display/ES/Zoo+Animal+Roster\">wiki roster</a>"
+		. "</div>\n";
+
+	# animals
+	foreach ($animals as $akey => $avalue) {
+		$acurrent = (php_uname("n") == $avalue);
+		$adisabled = false;
+		$afailing = false;
+
+		foreach ($apps as $key => $value) {
+			$nvalue = "/net/" . $avalue . ".palm.com" . $value->workdir;
+			$adisabled = $adisabled
+				   || file_exists($nvalue . "/disable")
+				   || file_exists($nvalue . "/disable-application");
+			$afailing = $afailing || file_exists($nvalue . "/FAILING");
+		}
+
+		if ($acurrent && $adisabled && $afailing) {
+			$astatus = "current-disabled-failing";
+		} elseif ($acurrent && $adisabled) {
+			$astatus = "current-disabled";
+		} elseif ($adisabled && $afailing) {
+			$astatus = "disabled-failing";
+		} elseif ($acurrent && $afailing) {
+			$astatus = "current-failing";
+		} elseif ($acurrent) {
+			$astatus = "current";
+		} elseif ($adisabled) {
+			$astatus = "disabled";
+		} elseif ($afailing) {
+			$astatus = "failing";
+		} else {
+			$astatus = "normal";
+		}
+
+		$animalbar[$avalue] = new headeritem("https://" . $avalue . ".palm.com",
+			$astatus);
+	}
+
+	$retval .= headerbar($animalbar);
+
+	# apps
+	foreach ($apps as $key => $value) {
+		$nvalue = "../" . $value->link;
+		if (file_exists($nvalue)) {
+			$current = ($key == $highlight2);
+			$disabled = file_exists($value->workdir . "/disable")
+				  || file_exists($value->workdir . "/disable-application");
+			$failing = file_exists($value->workdir . "/FAILING");
+
+			if ($current && $disabled && $failing) {
+				$nstatus = "current-disabled-failing";
+			} elseif ($current && $disabled) {
+				$nstatus = "current-disabled";
+			} elseif ($disabled && $failing) {
+				$nstatus = "disabled-failing";
+			} elseif ($current && $failing) {
+				$nstatus = "current-failing";
+			} elseif ($current) {
+				$nstatus = "current";
+			} elseif ($disabled) {
+				$nstatus = "disabled";
+			} elseif ($failing) {
+				$nstatus = "failing";
+			} else {
+				$nstatus = "normal";
+			}
+
+			$appsbar[$key] = new headeritem($nvalue, $nstatus);
+		}
+	}
+
+	$retval .= headerbar($appsbar);
+
+	$retval .= headerbar($thirdbar);
+
+	if (file_exists("/net/nova-builder.palm.com/var/www/GLOBAL-NEWS")) {
+		$retval .= "<div class=\"news\">\n";
+		$retval .= "<h1>Zoo Animal News</h1>\n";
+		$retval .= htmlspecialchars(file_get_contents("/net/nova-builder.palm.com/var/www/GLOBAL-NEWS"));
+		$retval .= "</div>\n";
+	}
+
+	if (file_exists("../NEWS")) {
+		global $hostname;
+
+		$retval .= "<div class=\"news\">\n";
+		$retval .= "<h1>" . $hostname . " News</h1>\n";
+		$retval .= htmlspecialchars(file_get_contents("../NEWS"));
+		$retval .= "</div>\n";
+	}
+
+	return $retval;
+}
+
+function footer() {
+	$retval = "";
+	$retval .= "<div class=\"content-break\">\n";
+	$retval .= "<p>" . php_uname("") . "</p>\n";
+	$retval .= "<p>For fastest response to questions or issues";
+	$retval .= " regarding this server or this page email";
+	$retval .= " <a href=\"mailto:build@palm.com\">build@palm.com</a></p>";
+	$retval .= "<p>Webmaster: <a href=\"mailto:rich.pixley@palm.com\">";
+	$retval .= "Rich Pixley &#60rich.pixley@palm.com&#62</a></p>";
+	$retval .= "</div>";
+	return $retval;
+}
+
+# HRI stands for human readable interval
+function hri($in) {
+	if ($in < 0)
+	   return "";
+
+	if ($in == 0)
+	   return "0s";
+
+	$seconds = $in % 60;
+	$rest = ($in - $seconds) / 60;
+
+	$minutes = $rest % 60;
+	$rest = ($rest - $minutes) / 60;
+
+	$hours = $rest % 24;
+	$rest = ($rest - $hours) / 24;
+
+	$days = $rest % 7;
+	$weeks = ($rest - $days) / 7;
+
+	if ($weeks > 0)
+		return "${weeks}w${days}d${hours}h${minutes}m${seconds}s";
+	elseif ($days > 0)
+		return "${days}d${hours}h${minutes}m${seconds}s";
+	elseif ($hours > 0)
+		return "${hours}h${minutes}m${seconds}s";
+	elseif ($minutes > 0)
+		return "${minutes}m${seconds}s";
+	else
+		return "${seconds}s";
+}
+
+?>

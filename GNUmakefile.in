@@ -1,0 +1,291 @@
+#!/usr/bin/make -f
+# Time-stamp: <21-Jun-2012 04:23:32 PDT by rich.pixley@palm.com>
+
+# Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+default: all
+
+DESTDIR := 
+
+srcdir := @srcdir@
+VPATH := $(srcdir):$(srcdir)/za-base
+
+cmptname := zoo-animals
+
+preowner := za-pre
+postowner := za-post
+
+prefix := @prefix@
+exec_prefix := @exec_prefix@
+bindir := @bindir@
+sbindir := @sbindir@
+libexecdir := @libexecdir@
+mylibexecdir := $(libexecdir)/$(cmptname)
+
+datarootdir := @datarootdir@
+datadir := @datadir@/$(cmptname)
+sysconfdir := @sysconfdir@
+mysysconfdir := $(sysconfdir)/$(cmptname)
+sharedstatedir = @sharedstatedir@
+localstatedir := @localstatedir@
+mylocalstatedir := $(localstatedir)/$(cmptname)
+prelocalstatedir := $(mylocalstatedir)/za-pre
+postlocalstatedir := $(mylocalstatedir)/za-post
+
+docdir := $(datarootdir)/doc
+mandir := @mandir@
+man8dir := $(mandir)/man8
+man8ext := .8
+
+datadirpre := $(datadir)/za-pre
+datadirpost := $(datadir)/za-post
+datadirpostd := $(datadir)/za-postd
+datadirapco := $(datadir)/za-apache-config
+datadirphputils := $(datadir)/za-php-utils
+datadirbase := $(datadir)/za-base
+datadirmachineinfo := $(datadir)/za-machine-info
+datadirmachinematrix := $(datadir)/za-machine-matrix
+
+INSTALL := @INSTALL@
+INSTALL_PROGRAM := $(INSTALL)
+INSTALL_SCRIPT := $(INSTALL) -m 755
+INSTALL_DATA := $(INSTALL) -m 644
+INSTALL_DIR := @MKDIR_P@
+
+scriptconfigs := \
+	sed \
+		-e '/=preowner=/s::${preowner}:' \
+		-e '/=postowner=/s::${postowner}:' \
+		-e '/=prefix=/s::${prefix}:' \
+		-e '/=exec_prefix=/s::${exec_prefix}:' \
+		-e '/=bindir=/s::${bindir}:' \
+		-e '/=sysconfdir=/s::${mysysconfdir}:' \
+		-e '/=prelocalstatedir=/s::${prelocalstatedir}:' \
+		-e '/=postlocalstatedir=/s::${postlocalstatedir}:' \
+		-e '/=mylibexecdir=/s::${mylibexecdir}:' \
+
+packages := conf php-utils apache-config base machine-info machine-matrix pre d post
+
+.PHONY: all
+all: $(packages:%=all-%)
+
+.PHONY: $(packages:%=all-%)
+$(packages:%=all-%)::
+
+all-base:: za.css za-headers.php
+
+COLORSCHEME := precise
+za.css: za-css.in sed-$(COLORSCHEME).in
+	sed -f $(srcdir)/za-base/sed-$(COLORSCHEME).in < $< > $@-new
+	mv -f $@-new $@
+
+za-headers.php: za-base/za-headers-php.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+all-conf:: ZAconf.py za.conf
+ZAconf.py: za-conf/ZAconf-py.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+za.conf: za-conf/za-conf.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+all-pre:: za-pre-check-loop.sh pre-headerbar.php aliases sudoers watchdog.sh
+
+za-pre-check-loop.sh: za-pre/za-pre-check-loop-sh.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+pre-headerbar.php: za-pre/pre-headerbar-php.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+aliases: za-pre/aliases.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+sudoers: za-pre/sudoers.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+watchdog.sh: za-pre/watchdog-sh.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+all-post:: za-post-check-loop.sh
+za-post-check-loop.sh: za-post/za-post-check-loop-sh.in
+	$(scriptconfigs) < $< > $@-new && mv -f $@-new $@
+
+.PHONY: check
+check: check-post # check-pre
+
+.PHONY: check-post
+check-post: za-post/tests/GNUmakefile
+	$(MAKE) -C za-post/tests
+
+.PHONY: check-pre
+check-pre: za-pre/tests/GNUmakefile
+	$(MAKE) -C za-pre/tests
+
+.PHONY: distclean
+distclean: clean
+	rm -f config.status config.log GNUmakefile docs/Makefile za-*/tests/GNUmakefile
+
+.PHONY: clean
+clean:
+	$(MAKE) -C docs clean
+	$(MAKE) -C za-pre/tests clean
+	$(MAKE) -C za-post/tests clean
+	rm -rf build *.pyc apidocs za.css za-conf/ZAconf.py
+
+doctrigger = $(srcdir)/docs/build/html/index.html
+
+.PHONY: docs html
+html docs: ${doctrigger}
+${doctrigger}: docs/index.rst
+	$(MAKE) -C docs html
+
+install: $(packages:%=install-%)
+
+install-conf: all-conf
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-conf
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-conf/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(man8dir)
+	$(INSTALL_DATA) $(srcdir)/za-conf/ZAconf.man $(DESTDIR)$(man8dir)/ZAconf$(man8ext)
+
+	$(INSTALL_DIR) $(DESTDIR)$(bindir)
+	$(INSTALL_SCRIPT) -m 0755 ZAconf.py $(DESTDIR)$(bindir)/ZAconf
+
+	$(INSTALL_DIR) $(DESTDIR)$(mysysconfdir)
+	$(INSTALL_DATA) za.conf $(DESTDIR)$(mysysconfdir)/za.conf
+
+install-php-utils: all-php-utils
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-php-utils
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-php-utils/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(datadirphputils)
+	$(INSTALL_DATA) $(srcdir)/za-php-utils/cat.php $(DESTDIR)$(datadirphputils)/cat.php
+	$(INSTALL_DATA) $(srcdir)/za-php-utils/tail.php $(DESTDIR)$(datadirphputils)/tail.php
+
+install-apache-config: all-apache-config
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-apache-config
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-apache-config/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(datadirapco)
+	$(INSTALL_DATA) $(srcdir)/za-apache-config/site-template $(DESTDIR)$(datadirapco)/site-template
+
+install-base: all-base
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-base
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-base/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(mysysconfdir)
+	$(INSTALL_DATA) $(srcdir)/za-base/apache.conf $(DESTDIR)$(mysysconfdir)/apache.conf
+
+	$(INSTALL_DIR) $(DESTDIR)$(mylibexecdir)
+	$(INSTALL_SCRIPT) $(srcdir)/za-base/merge-timings.py $(DESTDIR)$(mylibexecdir)/merge-timings
+
+	$(INSTALL_DIR) $(DESTDIR)$(datadirbase)
+	$(INSTALL_DATA) $(srcdir)/za-base/index.php $(DESTDIR)$(datadir)/index.php
+	$(INSTALL_DATA) za-headers.php $(DESTDIR)$(datadirbase)/za-headers.php
+	$(INSTALL_DATA) za.css $(DESTDIR)$(datadirbase)/za.css
+
+install-machine-info: all-machine-info
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-machine-info
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-machine-info/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(datadirmachineinfo)
+	$(INSTALL_DATA) $(srcdir)/za-machine-info/index.php $(DESTDIR)$(datadirmachineinfo)/index.php
+
+install-machine-matrix: all-machine-matrix
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-machine-matrix
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-machine-matrix/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(datadirmachinematrix)
+	$(INSTALL_DATA) $(srcdir)/za-machine-matrix/index.php $(DESTDIR)$(datadirmachinematrix)/index.php
+	$(INSTALL_DATA) $(srcdir)/za-machine-matrix/post.php $(DESTDIR)$(datadirmachinematrix)/post.php
+	$(INSTALL_DATA) $(srcdir)/za-machine-matrix/mm-headerbar.php $(DESTDIR)$(datadirmachinematrix)/mm-headerbar.php
+	$(INSTALL_DATA) $(srcdir)/za-machine-matrix/overview.php $(DESTDIR)$(datadirmachinematrix)/overview.php
+	$(INSTALL_DATA) $(srcdir)/za-machine-matrix/post.php $(DESTDIR)$(datadirmachinematrix)/post.php
+
+install-pre: all-pre
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-pre
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-pre/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(mylibexecdir)
+	$(INSTALL_SCRIPT) za-pre-check-loop.sh $(DESTDIR)$(mylibexecdir)/za-pre-check-loop
+	$(INSTALL_SCRIPT) watchdog.sh $(DESTDIR)$(mylibexecdir)/watchdog
+	$(INSTALL_SCRIPT) $(srcdir)/za-pre/WorkQueue.py $(DESTDIR)$(mylibexecdir)/WorkQueue
+	$(INSTALL_SCRIPT) $(srcdir)/za-pre/Speculator.py $(DESTDIR)$(mylibexecdir)/Speculator
+	$(INSTALL_SCRIPT) $(srcdir)/za-pre/hookscript-stub.sh $(DESTDIR)$(mylibexecdir)/hookscript-stub
+	$(INSTALL_SCRIPT) $(srcdir)/za-pre/hookscript-zoo-animals.sh $(DESTDIR)$(mylibexecdir)/hookscript-zoo-animals
+	$(INSTALL_SCRIPT) $(srcdir)/za-pre/hookscript-open-webos.sh $(DESTDIR)$(mylibexecdir)/hookscript-open-webos
+
+	$(INSTALL_DIR) $(DESTDIR)$(datadirpre)
+	$(INSTALL_DATA) aliases $(DESTDIR)$(datadirpre)/aliases
+	$(INSTALL_DATA) sudoers $(DESTDIR)$(datadirpre)/sudoers
+
+	$(INSTALL_DATA) $(srcdir)/za-pre/index.php $(DESTDIR)$(datadirpre)/index.php
+	$(INSTALL_DATA) $(srcdir)/za-pre/log.php $(DESTDIR)$(datadirpre)/log.php
+	$(INSTALL_DATA) $(srcdir)/za-pre/status.php $(DESTDIR)$(datadirpre)/status.php
+	$(INSTALL_DATA) pre-headerbar.php $(DESTDIR)$(datadirpre)/pre-headerbar.php
+	$(INSTALL_DATA) $(srcdir)/za-pre/configs.php $(DESTDIR)$(datadirpre)/configs.php
+
+install-d: all-d
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-postd
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-postd/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(mylibexecdir)
+	$(INSTALL_SCRIPT) $(srcdir)/za-postd/ZApostd.py $(DESTDIR)$(mylibexecdir)/ZApostd
+
+install-post: all-post
+	$(INSTALL_DIR) $(DESTDIR)$(docdir)/za-post
+	$(INSTALL_DATA) $(srcdir)/COPYRIGHT $(DESTDIR)$(docdir)/za-post/copyright
+
+	$(INSTALL_DIR) $(DESTDIR)$(mylibexecdir)
+	$(INSTALL_SCRIPT) $(srcdir)/za-post/ZApostgen.py $(DESTDIR)$(mylibexecdir)/ZApostgen
+	$(INSTALL_SCRIPT) za-post-check-loop.sh $(DESTDIR)$(mylibexecdir)/za-post-check-loop
+
+	$(INSTALL_DIR) $(DESTDIR)$(datadirpost)
+	$(INSTALL_DATA) $(srcdir)/za-post/aliases $(DESTDIR)$(datadirpost)/aliases
+	$(INSTALL_DATA) $(srcdir)/za-post/sudoers $(DESTDIR)$(datadirpost)/sudoers
+
+	$(INSTALL_DATA) $(srcdir)/za-post/index.php $(DESTDIR)$(datadirpost)/index.php
+	$(INSTALL_DATA) $(srcdir)/za-post/post-headerbar.php $(DESTDIR)$(datadirpost)/post-headerbar.php
+	$(INSTALL_DATA) $(srcdir)/za-post/log.php $(DESTDIR)$(datadirpost)/log.php
+	$(INSTALL_DATA) $(srcdir)/za-post/results.php $(DESTDIR)$(datadirpost)/results.php
+	$(INSTALL_DATA) $(srcdir)/za-post/status.php $(DESTDIR)$(datadirpost)/status.php
+
+.PHONY: nosetests
+nosetests: ${python}
+	${setuppy} $@
+
+$(srcdir)/configure: configure.ac #aclocal.m4
+	cd '$(srcdir)' && autoconf
+
+GNUmakefile: GNUmakefile.in config.status
+	./config.status
+
+docs/Makefile: docs/Makefile.in
+	./config.status
+
+za-pre/tests/GNUmakefile: za-pre/tests/GNUmakefile.in
+	./config.status
+
+za-post/tests/GNUmakefile: za-post/tests/GNUmakefile.in
+	./config.status
+
+config.status: configure
+	./config.status --recheck
+
+force:
+TAGS: force
+	rm -f TAGS
+	find $(srcdir) -path $(srcdir)/.git -prune -o -type f -print \
+		| xargs etags -a

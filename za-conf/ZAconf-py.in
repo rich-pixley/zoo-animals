@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+# -*- mode: python; -*-
+# Time-stamp: <21-Jun-2012 02:47:58 PDT by rich.pixley@palm.com>
+
+# Copyright (c) 2012 Hewlett-Packard Development Company, L.P.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""
+This module is a shell callable program intended to bring access of
+python style ini files up to shell level.
+"""
+
+__docformat__ = 'restructuredtext en'
+
+__all__ = [
+    ]
+
+sysconfdir = '=sysconfdir='
+
+import argparse
+import configparser
+import os
+import sys
+
+def getopts():
+    parser = argparse.ArgumentParser(description='Read ini files')
+
+    parser.add_argument('value', nargs='?')
+
+    zaconf = os.path.join(sysconfdir, 'za.conf')
+    parser.add_argument('-c', '--config',
+                        default=zaconf,
+                        help='(default: {})'.format(zaconf))
+
+
+    parser.add_argument('-s', '--section')
+    parser.add_argument('-k', '--key')
+    parser.add_argument('-v', '--value')
+
+    return parser.parse_args()
+    
+if __name__ == '__main__':
+    options = getopts()
+
+    config = configparser.ConfigParser()
+    config.read(options.config)
+
+    if not options.section:
+        for section in sorted(config):
+            print(section)
+
+    elif not options.key:
+        try:
+            for key in sorted(config[options.section]):
+                print(key)
+
+        except KeyError:
+            print('Section \"{}\" not found.'.format(options.section))
+            sys.exit(1)
+
+    elif not options.value:
+        try:
+            x = config[options.section]
+            
+        except KeyError:
+            print('Section \"{}\" not found.'.format(options.section))
+            sys.exit(1)
+
+        try:
+            print(x[options.key])
+
+        except KeyError:
+            print('Key \"{}\" not found.'.format(options.key))
+            sys.exit(1)
+
+    else:
+        config[options.section][options.key] = options.value
+
+        tmpfile = options.config + '-new'
+        with open(tmpfile, 'w') as f:
+            config.write(f)
+
+        os.rename(tmpfile, options.config)
