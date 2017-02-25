@@ -25,6 +25,10 @@
   <td><?= htmlspecialchars(`awk '/cpu MHz/ { print $4; exit; }' /proc/cpuinfo`) ?></td>
 </tr>
 <tr>
+  <td>bogomips</td>
+  <td><?= htmlspecialchars(`awk '/bogomips/ { print $3; exit; }' /proc/cpuinfo`) ?></td>
+</tr>
+<tr>
   <td>memory</td>
   <td><?= htmlspecialchars(`awk '/MemTotal/ { print $2, $3; exit; }' /proc/meminfo`) ?></td>
 </tr>
