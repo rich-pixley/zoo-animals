@@ -1,7 +1,8 @@
 #!/usr/bin/make -f
-# Time-stamp: <21-Jun-2012 04:23:32 PDT by rich.pixley@palm.com>
+# Time-stamp: <24-Feb-2017 15:57:42 PST by rich@noir.com>
 
 # Copyright (c) 2008 - 2012 Hewlett-Packard Development Company, L.P.
+# Copyright 2012 - 2017 K Richard Pixley
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,10 +33,9 @@ exec_prefix := @exec_prefix@
 bindir := @bindir@
 sbindir := @sbindir@
 libexecdir := @libexecdir@
-mylibexecdir := $(libexecdir)/$(cmptname)
 
 datarootdir := @datarootdir@
-datadir := @datadir@/$(cmptname)
+datadir := @datadir@/$(cmptname)/www
 sysconfdir := @sysconfdir@
 mysysconfdir := $(sysconfdir)/$(cmptname)
 sharedstatedir = @sharedstatedir@
@@ -43,6 +43,8 @@ localstatedir := @localstatedir@
 mylocalstatedir := $(localstatedir)/$(cmptname)
 prelocalstatedir := $(mylocalstatedir)/za-pre
 postlocalstatedir := $(mylocalstatedir)/za-post
+
+mylibexecdir := @datadir@/$(cmptname)/bin
 
 docdir := $(datarootdir)/doc
 mandir := @mandir@

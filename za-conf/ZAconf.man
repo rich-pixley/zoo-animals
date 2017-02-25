@@ -1,4 +1,4 @@
-.TH ZACONF "8" "June 2012" "zaconf" "User Commands"
+.TH ZACONF "8" "February 2017" "zaconf" "User Commands"
 .SH NAME
 ZAconf \- a shell callable tool for dealing with python config files
 .SH SYNOPSIS
@@ -21,8 +21,9 @@ value and the resulting config file is rewritten.
 The default config file is /etc/za.conf but can be specified using the \-c or
 \-\-config options.
 .SH AUTHOR
-Written by Rich Pixley.
+Written by K Richard Pixley.
 .SH "REPORTING BUGS"
-Report bugs to <rich.pixley@palm.com>.
+Report bugs to <rich@noir.com>.
 .SH COPYRIGHT
 Copyright \(co 2008 - 2012 Hewlett-Packard Development Company, L.P.
+Copyright \(co 2012 - 2017 K Richard Pixley

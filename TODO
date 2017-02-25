@@ -1,2 +1,3 @@
 * replace za-conf tests
 * add missing section/key test
+* cat.php and tail.php are security holes that need to be patched.
